@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\UserResource;
 use App\Services\AuthService;
-use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
@@ -12,41 +14,40 @@ class AuthController extends Controller
     {
     }
 
-    public function login(Request $request)
+    /**
+     * @unauthenticated
+     */
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
+        $result = $this->authService->login($request->email, $request->password);
 
-        $token = $this->authService->login($request->email, $request->password);
-
-        if (!$token) {
+        if (!$result) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        return response()->json(['token' => $token]);
+        return response()->json([
+            'token' => $result['token'],
+            'expires_at' => $result['expires_at'],
+            'user' => new UserResource($result['user']),
+        ]);
     }
 
-    public function register(Request $request)
+    /**
+     * @unauthenticated
+     */
+    public function register(RegisterRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-        ]);
-
         $user = $this->authService->register($request->name, $request->email, $request->password);
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user
+            'user' => new UserResource($user)
         ], 201);
     }
 
     public function me()
     {
-        return response()->json(auth()->user());
+        return new UserResource(auth()->user());
     }
 
     public function logout()
