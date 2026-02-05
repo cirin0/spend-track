@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DefaultCategory;
+use App\Models\User;
 use App\Models\UserCategory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,14 +11,15 @@ class CategoryService
 {
     public function getAllCategories(int $userId): array
     {
-        $default = DefaultCategory::all();
-        $user = UserCategory::query()->where('user_id', $userId)->get();
+
+        $user = User::with('customCategories')->find($userId);
 
         return [
-            'default' => $default,
-            'user' => $user,
-            'all' => $default->merge($user)
+            'default' => DefaultCategory::all(),
+            'user' => $user->customCategories,
+            'all' => DefaultCategory::all()->merge($user->customCategories),
         ];
+
     }
 
     public function getCategoryById(int $id, string $type, int $userId): ?Model
