@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class UserResource extends JsonResource
+class CategoryResource extends JsonResource
 {
     public static $wrap = null;
 
@@ -14,7 +14,11 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'email' => $this->email,
+            'slug' => $this->when(isset($this->slug), $this->slug),
+            'icon' => $this->icon,
+            'color' => $this->color,
+            'user_id' => $this->when(isset($this->user_id), $this->user_id),
+            'type' => $this->when(isset($this->user_id), 'user', 'default'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
