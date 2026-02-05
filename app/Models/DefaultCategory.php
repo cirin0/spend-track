@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DefaultCategory extends Model
 {
@@ -12,4 +13,10 @@ class DefaultCategory extends Model
         'icon',
         'color'
     ];
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class, 'category_id')
+            ->where('category_type', 'default');
+    }
 }

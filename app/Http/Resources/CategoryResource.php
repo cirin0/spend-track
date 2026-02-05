@@ -19,6 +19,9 @@ class CategoryResource extends JsonResource
             'color' => $this->color,
             'user_id' => $this->when(isset($this->user_id), $this->user_id),
             'type' => $this->when(isset($this->user_id), 'user', 'default'),
+            'expenses' => $this->when($this->relationLoaded('expenses'), function () {
+                return ExpenseResource::collection($this->expenses);
+            }),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
