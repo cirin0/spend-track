@@ -43,9 +43,12 @@ class CategoryController extends Controller
         }
     }
 
-    public function showBySlug(string $slug)
+    public function showBySlug(Request $request, string $slug)
     {
-        $category = $this->categoryService->getCategoryBySlug($slug);
+        $category = $this->categoryService->getCategoryBySlug(
+            $slug,
+            $request->user()->id
+        );
 
         if ($category) {
             return new CategoryResource($category);

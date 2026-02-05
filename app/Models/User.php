@@ -25,9 +25,14 @@ class User extends Authenticatable implements JWTSubject
         'email_verified_at'
     ];
 
-    public function customCategories(): User|HasMany
+    public function customCategories(): HasMany
     {
         return $this->hasMany(UserCategory::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
     }
 
     public function getJWTIdentifier()

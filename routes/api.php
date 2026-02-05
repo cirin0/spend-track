@@ -3,6 +3,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ExpenseController;
 
 Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::post('login', 'login');
@@ -23,5 +24,18 @@ Route::middleware('auth:api')->group(function () {
         Route::get('{slug}', [CategoryController::class, 'showBySlug']);
         Route::patch('/{id}', [CategoryController::class, 'update']);
         Route::delete('/{id}', [CategoryController::class, 'destroy']);
+    });
+});
+
+Route::middleware('auth:api')->group(function () {
+    Route::prefix('expenses')->group(function () {
+        Route::get('/', [ExpenseController::class, 'index']);
+        Route::post('/', [ExpenseController::class, 'store']);
+        Route::get('/stats', [ExpenseController::class, 'stats']);
+        Route::get('/{id}', [ExpenseController::class, 'show']);
+        Route::get('/category/{categoryId}/{categoryType}', [ExpenseController::class, 'getExpensesByCategory'])
+            ->where(['categoryType' => 'default|user']);
+        Route::patch('/{id}', [ExpenseController::class, 'update']);
+        Route::delete('/{id}', [ExpenseController::class, 'destroy']);
     });
 });

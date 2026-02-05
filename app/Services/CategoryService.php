@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\DefaultCategory;
+use App\Models\Expense;
 use App\Models\User;
 use App\Models\UserCategory;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 
 class CategoryService
@@ -25,17 +27,30 @@ class CategoryService
     public function getCategoryById(int $id, string $type, int $userId): ?Model
     {
         if ($type === 'default') {
-            return DefaultCategory::query()->find($id);
+            return DefaultCategory::query()
+                ->with(['expenses' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId)->orderBy('date', 'desc');
+                }])
+                ->find($id);
         }
 
-        return UserCategory::query()->where('id', $id)
+        return UserCategory::query()
+            ->where('id', $id)
             ->where('user_id', $userId)
+            ->with(['expenses' => function ($query) {
+                $query->orderBy('date', 'desc');
+            }])
             ->first();
     }
 
-    public function getCategoryBySlug(string $slug): ?Model
+    public function getCategoryBySlug(string $slug, int $userId): ?Model
     {
-        return DefaultCategory::query()->where('slug', $slug)->first();
+        return DefaultCategory::query()
+            ->where('slug', $slug)
+            ->with(['expenses' => function ($query) use ($userId) {
+                $query->where('user_id', $userId)->orderBy('date', 'desc');
+            }])
+            ->first();
     }
 
     public function createCategory(int $userId, array $data)
@@ -64,28 +79,23 @@ class CategoryService
 
     public function deleteCategory($id, int $userId): bool
     {
-//        if (!$this->canDeleteCategory($id, $userId)) {
-//            return false;
-//        }
-
         $category = UserCategory::query()->where('id', $id)
             ->where('user_id', $userId)
             ->first();
 
-        if ($category) {
-            return $category->delete();
-        } else {
-            return false;
+        if (!$category) {
+            throw new Exception('Category not found');
         }
-    }
 
-    private function canDeleteCategory($id, int $userId): bool
-    {
-        $category = UserCategory::query()->where('id', $id)
+        $hasExpenses = Expense::query()->where('category_id', $id)
+            ->where('category_type', 'user')
             ->where('user_id', $userId)
-            ->withCount('expenses')
-            ->first();
+            ->exists();
 
-        return $category && $category->expenses_count === 0;
+        if ($hasExpenses) {
+            throw new Exception('Cannot delete category with associated expenses');
+        }
+
+        return $category->delete();
     }
 }
