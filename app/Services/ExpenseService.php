@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\DefaultCategory;
+use App\Models\Category;
 use App\Models\Expense;
-use App\Models\UserCategory;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -12,7 +11,7 @@ class ExpenseService
 {
     public function getAllExpenses(int $userId, ?string $startDate = null, ?string $endDate = null): Collection
     {
-        $query = Expense::with(['defaultCategory', 'userCategory'])
+        $query = Expense::with('category')
             ->where('user_id', $userId)
             ->orderBy('date', 'desc');
 
@@ -20,68 +19,53 @@ class ExpenseService
             $query->whereBetween('date', [$startDate, $endDate]);
         }
 
-        return $query->get()->map(function ($expense) {
-            $expense->category = $expense->category_type === 'default'
-                ? $expense->defaultCategory
-                : $expense->userCategory;
-            return $expense;
-        });
+        return $query->get();
     }
 
     public function getExpenseById(int $id, int $userId): ?Expense
     {
-        $expense = Expense::with(['defaultCategory', 'userCategory'])
+        return Expense::with('category')
             ->where('id', $id)
             ->where('user_id', $userId)
             ->first();
-
-        if ($expense) {
-            $expense->category = $expense->category_type === 'default'
-                ? $expense->defaultCategory
-                : $expense->userCategory;
-        }
-
-        return $expense;
     }
 
-    public function getExpensesByCategory(int $categoryId, string $categoryType, int $userId): Collection
+    public function getExpensesByCategory(int $categoryId, int $userId): Collection
     {
-        return Expense::with(['defaultCategory', 'userCategory'])
+        return Expense::with('category')
             ->where('user_id', $userId)
             ->where('category_id', $categoryId)
-            ->where('category_type', $categoryType)
             ->orderBy('date', 'desc')
             ->get();
     }
 
     public function createExpense(int $userId, array $data): Expense
     {
-        $this->validateCategory($data['category_id'], $data['category_type'], $userId);
+        if (isset($data['category_id'])) {
+            $this->validateCategory($data['category_id'], $userId);
+        }
 
         return Expense::query()->create([
             'user_id' => $userId,
-            'category_id' => $data['category_id'],
-            'category_type' => $data['category_type'],
+            'category_id' => $data['category_id'] ?? null,
             'amount' => $data['amount'],
             'description' => $data['description'] ?? null,
             'date' => $data['date'],
         ]);
     }
 
-    private function validateCategory(int $categoryId, string $categoryType, int $userId): void
+    private function validateCategory(int $categoryId, int $userId): void
     {
-        if ($categoryType === 'default') {
-            $exists = DefaultCategory::query()->where('id', $categoryId)->exists();
-            if (!$exists) {
-                throw new Exception('Default category not found');
-            }
-        } else {
-            $exists = UserCategory::query()->where('id', $categoryId)
-                ->where('user_id', $userId)
-                ->exists();
-            if (!$exists) {
-                throw new Exception('User category not found or does not belong to user');
-            }
+        $exists = Category::query()
+            ->where('id', $categoryId)
+            ->where(function ($query) use ($userId) {
+                $query->where('is_default', true)
+                    ->orWhere('user_id', $userId);
+            })
+            ->exists();
+
+        if (!$exists) {
+            throw new Exception('Category not found or not available for user');
         }
     }
 
@@ -95,8 +79,8 @@ class ExpenseService
             return null;
         }
 
-        if (isset($data['category_id']) && isset($data['category_type'])) {
-            $this->validateCategory($data['category_id'], $data['category_type'], $userId);
+        if (isset($data['category_id'])) {
+            $this->validateCategory($data['category_id'], $userId);
         }
 
         $expense->update($data);
@@ -113,12 +97,12 @@ class ExpenseService
         return $expense ? $expense->delete() : false;
     }
 
-
-    public function getStatsByCategory(int $userId, ?string $startDate = null, ?string $endDate = null)
+    public function getStatsByCategory(int $userId, ?string $startDate = null, ?string $endDate = null): Collection
     {
-        $query = Expense::query()->where('user_id', $userId)
-            ->selectRaw('category_id, category_type, SUM(amount) as total, COUNT(*) as count')
-            ->groupBy('category_id', 'category_type');
+        $query = Expense::query()
+            ->where('user_id', $userId)
+            ->selectRaw('category_id, SUM(amount) as total, COUNT(*) as count')
+            ->groupBy('category_id');
 
         if ($startDate && $endDate) {
             $query->whereBetween('date', [$startDate, $endDate]);
@@ -127,11 +111,7 @@ class ExpenseService
         $stats = $query->get();
 
         return $stats->map(function ($stat) {
-            if ($stat->category_type === 'default') {
-                $category = DefaultCategory::query()->find($stat->category_id);
-            } else {
-                $category = UserCategory::query()->find($stat->category_id);
-            }
+            $category = $stat->category_id ? Category::query()->find($stat->category_id) : null;
 
             return [
                 'category' => $category,

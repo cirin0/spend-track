@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Category\StoreCategoryRequest;
 use App\Http\Requests\Category\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
+use App\Models\Category;
 use App\Services\CategoryService;
+use App\Traits\SlugGenerationTrait;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    use SlugGenerationTrait;
+
     public function __construct(protected CategoryService $categoryService)
     {
     }
@@ -28,11 +32,10 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $type, int $id)
+    public function show(Request $request, int $id)
     {
         $category = $this->categoryService->getCategoryById(
             $id,
-            $type,
             $request->user()->id
         );
 
@@ -59,9 +62,11 @@ class CategoryController extends Controller
 
     public function store(StoreCategoryRequest $request)
     {
+        $slug = self::createOriginalSlug($request->name, Category::class);
+
         $category = $this->categoryService->createCategory(
             $request->user()->id,
-            $request->validated()
+            $request->validated() + ['slug' => $slug]
         );
 
         return new CategoryResource($category);
@@ -69,33 +74,34 @@ class CategoryController extends Controller
 
     public function update(UpdateCategoryRequest $request, int $id)
     {
-        $updated = $this->categoryService->updateCategory(
+        $category = $this->categoryService->updateCategory(
             $id,
             $request->user()->id,
             $request->validated()
         );
 
-        if ($updated) {
+        if (!$category) {
             return response()->json([
-                'message' => 'Category updated successfully',
-                'category' => new CategoryResource($updated)
-            ]);
-        } else {
-            return response()->json(['message' => 'Category not found'], 404);
+                'message' => 'Category not found'
+            ], 404);
         }
+
+        return response()->json([
+            'message' => 'Category updated successfully',
+            'category' => new CategoryResource($category)
+        ]);
     }
 
     public function destroy(Request $request, int $id)
     {
-        $deleted = $this->categoryService->deleteCategory(
-            $id,
-            $request->user()->id
-        );
+        $deleted = $this->categoryService->deleteCategory($id, $request->user()->id);
 
-        if ($deleted) {
-            return response()->json(['message' => 'Category deleted successfully'], 204);
-        } else {
-            return response()->json(['message' => 'Category not found, not owned by user, or cannot be deleted'], 404);
+        if (!$deleted) {
+            return response()->json([
+                'message' => 'Category not found'
+            ], 404);
         }
+
+        return response()->json(['message' => 'Category deleted successfully']);
     }
 }

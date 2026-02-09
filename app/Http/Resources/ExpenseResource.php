@@ -18,11 +18,11 @@ class ExpenseResource extends JsonResource
             'date' => $this->date->format('Y-m-d'),
             'category' => [
                 'id' => $this->category_id,
-                'type' => $this->category_type,
                 'name' => $this->category?->name,
                 'icon' => $this->category?->icon,
                 'color' => $this->category?->color,
                 'slug' => $this->category?->slug ?? null,
+                'is_default' => $this->category?->is_default ?? false,
             ],
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at

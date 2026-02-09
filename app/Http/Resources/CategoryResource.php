@@ -14,11 +14,11 @@ class CategoryResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'slug' => $this->when(isset($this->slug), $this->slug),
+            'slug' => $this->slug,
             'icon' => $this->icon,
             'color' => $this->color,
-            'user_id' => $this->when(isset($this->user_id), $this->user_id),
-            'type' => $this->when(isset($this->user_id), 'user', 'default'),
+            'user_id' => $this->user_id,
+            'is_default' => $this->is_default,
             'expenses' => $this->when($this->relationLoaded('expenses'), function () {
                 return ExpenseResource::collection($this->expenses);
             }),
