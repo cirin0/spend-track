@@ -97,7 +97,7 @@ class ExpenseService
         return $expense ? $expense->delete() : false;
     }
 
-    public function getStatsByCategory(int $userId, ?string $startDate = null, ?string $endDate = null): Collection
+    public function getStatsByCategory(int $userId, ?string $startDate = null, ?string $endDate = null)
     {
         $query = Expense::query()
             ->where('user_id', $userId)
