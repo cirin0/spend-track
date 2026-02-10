@@ -10,7 +10,6 @@ class Expense extends Model
     protected $fillable = [
         'user_id',
         'category_id',
-        'category_type',
         'amount',
         'description',
         'date'
@@ -26,20 +25,8 @@ class Expense extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function defaultCategory(): BelongsTo
+    public function category(): BelongsTo
     {
-        return $this->belongsTo(DefaultCategory::class, 'category_id');
-    }
-
-    public function userCategory(): BelongsTo
-    {
-        return $this->belongsTo(UserCategory::class, 'category_id');
-    }
-
-    public function getCategoryAttribute()
-    {
-        return $this->category_type === 'default'
-            ? $this->defaultCategory
-            : $this->userCategory;
+        return $this->belongsTo(Category::class);
     }
 }

@@ -10,13 +10,18 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('default_categories', function (Blueprint $table) {
+        Schema::create('categories', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->string('slug')->unique();
+            $table->string('slug')->nullable();
             $table->string('icon')->nullable();
             $table->string('color')->nullable();
+            $table->boolean('is_default')->default(false);
             $table->timestamps();
+
+            $table->index(['user_id', 'is_default']);
+            $table->unique(['slug', 'is_default'], 'unique_default_slug');
         });
     }
 
@@ -25,6 +30,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('default_categories');
+        Schema::dropIfExists('categories');
     }
 };

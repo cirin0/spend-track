@@ -15,7 +15,6 @@ class UpdateExpenseRequest extends FormRequest
     {
         return [
             'category_id' => 'sometimes|required|integer|min:1',
-            'category_type' => 'sometimes|required|in:default,user',
             'amount' => 'sometimes|required|numeric|min:0.01|max:999999.99',
             'description' => 'nullable|string|max:1000',
             'date' => 'sometimes|required|date|before_or_equal:today',
@@ -26,8 +25,6 @@ class UpdateExpenseRequest extends FormRequest
     {
         return [
             'category_id.required' => 'Category is required',
-            'category_type.required' => 'Category type is required',
-            'category_type.in' => 'Invalid category type',
             'amount.required' => 'Amount is required',
             'amount.min' => 'Amount must be greater than 0',
             'amount.max' => 'Amount is too large',

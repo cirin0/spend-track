@@ -43,11 +43,10 @@ class ExpenseController extends Controller
         return response()->json(new ExpenseResource($expense));
     }
 
-    public function getExpensesByCategory(int $categoryId, string $categoryType)
+    public function getExpensesByCategory(int $categoryId)
     {
         $expenses = $this->expenseService->getExpensesByCategory(
             $categoryId,
-            $categoryType,
             auth()->id()
         );
 
@@ -64,6 +63,28 @@ class ExpenseController extends Controller
             $expense = $this->expenseService->createExpense(
                 auth()->id(),
                 $request->validated()
+            );
+
+            return response()->json(
+                new ExpenseResource($expense),
+                201
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    public function storeByCategory(StoreExpenseRequest $request, int $categoryId)
+    {
+        try {
+            $data = $request->validated();
+            $data['category_id'] = $categoryId;
+
+            $expense = $this->expenseService->createExpense(
+                auth()->id(),
+                $data
             );
 
             return response()->json(

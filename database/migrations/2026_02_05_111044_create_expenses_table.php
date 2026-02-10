@@ -10,15 +10,14 @@ return new class extends Migration {
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->unsignedBigInteger('category_id');
-            $table->enum('category_type', ['default', 'user']);
+            $table->foreignId('category_id')->constrained()->onDelete('restrict');
             $table->decimal('amount', 10, 2);
             $table->text('description')->nullable();
             $table->date('date');
             $table->timestamps();
 
             $table->index(['user_id', 'date']);
-            $table->index(['category_id', 'category_type']);
+            $table->index('category_id');
         });
     }
 
