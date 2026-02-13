@@ -31,21 +31,21 @@ class Group extends Model
         return $this->members()->where('user_id', $userId)->exists();
     }
 
-//    public function categories()
-//    {
-//        return $this->hasMany(GroupCategory::class);
-//    }
-//
-//    public function expenses()
-//    {
-//        return $this->hasMany(GroupExpense::class);
-//    }
-
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'group_members')
             ->withPivot('role', 'joined_at')
             ->withTimestamps();
+    }
+
+    public function categories()
+    {
+        return $this->hasMany(GroupCategory::class);
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(GroupExpense::class);
     }
 
     public function isOwner(int $userId): bool

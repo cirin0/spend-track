@@ -4,7 +4,9 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\GroupCategoryController;
 use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\GroupExpenseController;
 
 Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::post('login', 'login');
@@ -49,5 +51,16 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/{id}/members', [GroupController::class, 'addMember']);
         Route::delete('/{id}/members/{userId}', [GroupController::class, 'removeMember']);
         Route::post('/{id}/leave', [GroupController::class, 'leave']);
+
+        Route::get('/{groupId}/categories', [GroupCategoryController::class, 'index']);
+        Route::post('/{groupId}/categories', [GroupCategoryController::class, 'store']);
+        Route::put('/{groupId}/categories/{id}', [GroupCategoryController::class, 'update']);
+        Route::delete('/{groupId}/categories/{id}', [GroupCategoryController::class, 'destroy']);
+
+        Route::get('/{groupId}/expenses/stats', [GroupExpenseController::class, 'stats']);
+        Route::get('/{groupId}/expenses', [GroupExpenseController::class, 'index']);
+        Route::post('/{groupId}/expenses', [GroupExpenseController::class, 'store']);
+        Route::put('/{groupId}/expenses/{id}', [GroupExpenseController::class, 'update']);
+        Route::delete('/{groupId}/expenses/{id}', [GroupExpenseController::class, 'destroy']);
     });
 });
