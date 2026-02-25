@@ -74,10 +74,16 @@ class CategoryController extends Controller
 
     public function update(UpdateCategoryRequest $request, int $id)
     {
+        $data = $request->validated();
+
+        if (isset($data['name'])) {
+            $data['slug'] = self::createOriginalSlug($data['name'], Category::class);
+        }
+
         $category = $this->categoryService->updateCategory(
             $id,
             $request->user()->id,
-            $request->validated()
+            $data
         );
 
         if (!$category) {
