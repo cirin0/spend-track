@@ -26,20 +26,16 @@ onMounted(async () => {
           </template>
         </PageHeader>
 
-        <!-- Loading -->
         <div v-if="groupStore.loading && !groupStore.hasGroups" class="loading">
           Завантаження...
         </div>
 
-        <!-- Error -->
         <div v-else-if="groupStore.error" class="error-message">
           {{ groupStore.error }}
           <button @click="groupStore.fetchGroups()" class="btn-retry">Спробувати знову</button>
         </div>
 
-        <!-- Content -->
         <div v-else>
-          <!-- Groups Grid -->
           <div v-if="groupStore.hasGroups" class="groups-grid">
             <div
               v-for="group in groupStore.groups"
@@ -69,7 +65,6 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Empty State -->
           <div v-else class="empty-state">
             <div class="empty-icon">👥</div>
             <h3>Немає груп</h3>

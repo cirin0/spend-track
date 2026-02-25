@@ -205,7 +205,6 @@ function formatDate(dateString: string): string {
             </button>
           </div>
 
-          <!-- Expenses Tab -->
           <div v-if="activeTab === 'expenses'" class="tab-content">
             <div class="tab-header">
               <h3>Витрати групи</h3>
@@ -235,9 +234,7 @@ function formatDate(dateString: string): string {
                   <div class="expense-meta">{{ expense.user.name }}</div>
                 </div>
                 <div v-if="canEditExpense(expense)" class="expense-actions">
-                  <button @click="deleteExpenseById(expense.id)" class="btn-icon delete">
-                    🗑️
-                  </button>
+                  <button @click="deleteExpenseById(expense.id)" class="btn-icon delete">🗑️</button>
                 </div>
               </div>
             </div>
@@ -247,7 +244,6 @@ function formatDate(dateString: string): string {
             </div>
           </div>
 
-          <!-- Categories Tab -->
           <div v-if="activeTab === 'categories'" class="tab-content">
             <div class="tab-header">
               <h3>Категорії групи</h3>
@@ -286,7 +282,6 @@ function formatDate(dateString: string): string {
             </div>
           </div>
 
-          <!-- Members Tab -->
           <div v-if="activeTab === 'members'" class="tab-content">
             <div class="tab-header">
               <h3>Учасники групи</h3>
@@ -335,12 +330,7 @@ function formatDate(dateString: string): string {
       </div>
     </main>
 
-    <!-- Add Expense Modal -->
-    <div
-      v-if="showAddExpenseModal"
-      class="modal-overlay"
-      @click.self="showAddExpenseModal = false"
-    >
+    <div v-if="showAddExpenseModal" class="modal-overlay" @click.self="showAddExpenseModal = false">
       <div class="modal">
         <h3>Додати витрату</h3>
         <form @submit.prevent="handleAddExpense">
@@ -381,7 +371,6 @@ function formatDate(dateString: string): string {
       </div>
     </div>
 
-    <!-- Add Category Modal -->
     <div
       v-if="showAddCategoryModal"
       class="modal-overlay"
@@ -412,7 +401,6 @@ function formatDate(dateString: string): string {
       </div>
     </div>
 
-    <!-- Add Member Modal -->
     <div v-if="showAddMemberModal" class="modal-overlay" @click.self="showAddMemberModal = false">
       <div class="modal">
         <h3>Додати учасника</h3>

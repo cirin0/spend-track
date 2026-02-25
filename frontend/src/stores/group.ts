@@ -23,10 +23,8 @@ export const useGroupStore = defineStore('group', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // Computed
   const hasGroups = computed(() => groups.value.length > 0)
 
-  // Groups
   async function fetchGroups() {
     loading.value = true
     error.value = null
@@ -124,7 +122,6 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
-  // Members
   async function addMember(groupId: number, userId: number) {
     loading.value = true
     error.value = null
@@ -187,7 +184,6 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
-  // Categories
   async function fetchCategories(groupId: number) {
     loading.value = true
     error.value = null
@@ -266,7 +262,6 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
-  // Expenses
   async function fetchExpenses(groupId: number) {
     loading.value = true
     error.value = null

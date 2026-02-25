@@ -288,68 +288,67 @@ onMounted(async () => {
               </div>
             </div>
 
-          <div class="charts-section">
-            <div class="chart-card">
-              <h3>Витрати за категоріями</h3>
-              <div class="chart-wrapper">
-                <Pie
-                  v-if="categoryChartData"
-                  :data="categoryChartData"
-                  :options="pieChartOptions"
-                />
+            <div class="charts-section">
+              <div class="chart-card">
+                <h3>Витрати за категоріями</h3>
+                <div class="chart-wrapper">
+                  <Pie
+                    v-if="categoryChartData"
+                    :data="categoryChartData"
+                    :options="pieChartOptions"
+                  />
+                </div>
+              </div>
+
+              <div class="chart-card wide">
+                <h3>Тренд витрат за місяцями</h3>
+                <div class="chart-wrapper">
+                  <Line
+                    v-if="monthlyTrendData"
+                    :data="monthlyTrendData"
+                    :options="lineChartOptions"
+                  />
+                </div>
+              </div>
+
+              <div class="chart-card wide">
+                <h3>Топ категорій</h3>
+                <div class="chart-wrapper">
+                  <Bar
+                    v-if="topCategoriesData"
+                    :data="topCategoriesData"
+                    :options="barChartOptions"
+                  />
+                </div>
               </div>
             </div>
 
-            <div class="chart-card wide">
-              <h3>Тренд витрат за місяцями</h3>
-              <div class="chart-wrapper">
-                <Line
-                  v-if="monthlyTrendData"
-                  :data="monthlyTrendData"
-                  :options="lineChartOptions"
-                />
-              </div>
-            </div>
-
-            <div class="chart-card wide">
-              <h3>Топ категорій</h3>
-              <div class="chart-wrapper">
-                <Bar
-                  v-if="topCategoriesData"
-                  :data="topCategoriesData"
-                  :options="barChartOptions"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="category-details">
-            <h3>Детальна статистика за категоріями</h3>
-            <div class="category-list">
-              <div
-                v-for="cat in summary.categories"
-                :key="cat.category_id || 'uncategorized'"
-                class="category-item"
-              >
-                <div class="category-info">
-                  <div
-                    class="category-icon-small"
-                    :style="{ backgroundColor: getCategoryDetails(cat.category_id).color }"
-                  >
-                    {{ getCategoryDetails(cat.category_id).icon }}
+            <div class="category-details">
+              <h3>Детальна статистика за категоріями</h3>
+              <div class="category-list">
+                <div
+                  v-for="cat in summary.categories"
+                  :key="cat.category_id || 'uncategorized'"
+                  class="category-item"
+                >
+                  <div class="category-info">
+                    <div
+                      class="category-icon-small"
+                      :style="{ backgroundColor: getCategoryDetails(cat.category_id).color }"
+                    >
+                      {{ getCategoryDetails(cat.category_id).icon }}
+                    </div>
+                    <div class="category-name">{{ cat.category_name }}</div>
                   </div>
-                  <div class="category-name">{{ cat.category_name }}</div>
-                </div>
-                <div class="category-stats">
-                  <div class="category-amount">{{ formatAmount(cat.amount) }} ₴</div>
-                  <div class="category-percentage">{{ cat.percentage.toFixed(1) }}%</div>
+                  <div class="category-stats">
+                    <div class="category-amount">{{ formatAmount(cat.amount) }} ₴</div>
+                    <div class="category-percentage">{{ cat.percentage.toFixed(1) }}%</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          </div>
 
-          <!-- Empty State -->
           <div v-else class="empty-state">
             <div class="empty-icon">📊</div>
             <h3>Немає даних для аналітики</h3>

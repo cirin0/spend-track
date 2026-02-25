@@ -103,7 +103,6 @@ export interface GroupExpenseStatsResponse {
 }
 
 export const groupService = {
-  // Groups
   async getAll(): Promise<Group[]> {
     const response = await api.get<{ data: Group[] }>('/groups/')
     return response.data.data
@@ -129,7 +128,6 @@ export const groupService = {
     return response.data
   },
 
-  // Members
   async addMember(groupId: number, userId: number): Promise<Group> {
     const response = await api.post<Group>(`/groups/${groupId}/members`, { user_id: userId })
     return response.data
@@ -145,7 +143,6 @@ export const groupService = {
     return response.data
   },
 
-  // Categories
   async getCategories(groupId: number): Promise<GroupCategory[]> {
     const response = await api.get<{ data: GroupCategory[] }>(`/groups/${groupId}/categories`)
     return response.data.data
@@ -175,7 +172,6 @@ export const groupService = {
     return response.data
   },
 
-  // Expenses
   async getExpenses(groupId: number): Promise<GroupExpense[]> {
     const response = await api.get<{ data: GroupExpense[] }>(`/groups/${groupId}/expenses`)
     return response.data.data

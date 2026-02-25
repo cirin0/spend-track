@@ -3,24 +3,14 @@ import { useAuthStore } from '@/stores/auth'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import CategoriesView from '@/views/CategoriesView.vue'
-import CategoryFormView from '@/views/CategoryFormView.vue'
-import CategoryExpensesView from '@/views/CategoryExpensesView.vue'
-import ExpensesView from '@/views/ExpensesView.vue'
-import ExpenseFormView from '@/views/ExpenseFormView.vue'
-import AnalyticsView from '@/views/AnalyticsView.vue'
-import GroupsView from '@/views/GroupsView.vue'
-import GroupFormView from '@/views/GroupFormView.vue'
-import GroupDetailView from '@/views/GroupDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-     {
+    {
       path: '/:pathMath(.*)*',
       name: 'NotFound',
-      redirect: '/'
+      redirect: '/',
     },
     {
       path: '/',
@@ -43,7 +33,7 @@ const router = createRouter({
     {
       path: '/profile',
       name: 'profile',
-      component: import ('../views/ProfileView.vue'),
+      component: import('../views/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -55,7 +45,7 @@ const router = createRouter({
     {
       path: '/categories/new',
       name: 'category-new',
-      component: import ('../views/CategoryFormView.vue'),
+      component: import('../views/CategoryFormView.vue'),
       meta: { requiresAuth: true },
     },
     {

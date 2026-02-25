@@ -56,20 +56,16 @@ function formatDate(dateString: string): string {
           </template>
         </PageHeader>
 
-        <!-- Loading -->
         <div v-if="expenseStore.loading && !expenseStore.hasExpenses" class="loading">
           Завантаження...
         </div>
 
-        <!-- Error -->
         <div v-else-if="expenseStore.error" class="error-message">
           {{ expenseStore.error }}
           <button @click="expenseStore.fetchExpenses()" class="btn-retry">Спробувати знову</button>
         </div>
 
-        <!-- Content -->
         <div v-else>
-          <!-- Stats -->
           <div v-if="expenseStore.hasExpenses" class="stats-section">
             <div class="stat-card">
               <div class="stat-label">Всього витрат</div>
@@ -81,7 +77,6 @@ function formatDate(dateString: string): string {
             </div>
           </div>
 
-          <!-- Expenses List -->
           <div v-if="expenseStore.hasExpenses" class="expenses-list">
             <div class="expense-card" v-for="expense in expenseStore.expenses" :key="expense.id">
               <div class="expense-main">
@@ -115,7 +110,6 @@ function formatDate(dateString: string): string {
             </div>
           </div>
 
-          <!-- Empty State -->
           <div v-else class="empty-state">
             <div class="empty-icon">💸</div>
             <h3>Немає витрат</h3>

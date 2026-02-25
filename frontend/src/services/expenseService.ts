@@ -65,7 +65,7 @@ export interface ExpenseStatsResponse {
 export const expenseService = {
   async getAll(): Promise<Expense[]> {
     const response = await api.get<ExpensesListResponse>('/expenses')
-    return response.data.data // Бекенд повертає {data: [...], total, count}
+    return response.data.data
   },
 
   async getById(id: number): Promise<Expense> {

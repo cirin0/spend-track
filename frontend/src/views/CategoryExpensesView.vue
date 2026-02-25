@@ -77,7 +77,6 @@ function formatDateTime(dateString: string): string {
     <AppSidebar />
     <main class="main-content" :style="{ marginLeft }">
       <div class="content-wrapper">
-        <!-- Header -->
         <PageHeader
           :title="category?.name || 'Витрати категорії'"
           :subtitle="
@@ -88,18 +87,14 @@ function formatDateTime(dateString: string): string {
           back-to="/categories"
         />
 
-        <!-- Loading -->
         <div v-if="loading" class="loading">Завантаження витрат...</div>
 
-        <!-- Error -->
         <div v-else-if="error" class="error-message">
           {{ error }}
           <button @click="loadExpenses" class="btn-retry">Спробувати знову</button>
         </div>
 
-        <!-- Content -->
         <div v-else>
-          <!-- Stats -->
           <div class="stats-section">
             <div class="stat-card">
               <div class="stat-label">Всього витрат</div>
@@ -111,7 +106,6 @@ function formatDateTime(dateString: string): string {
             </div>
           </div>
 
-          <!-- Expenses List -->
           <div v-if="expensesData && expensesData.data.length > 0" class="expenses-list">
             <h2>Список витрат</h2>
             <div class="expense-card" v-for="expense in expensesData.data" :key="expense.id">
@@ -127,7 +121,6 @@ function formatDateTime(dateString: string): string {
             </div>
           </div>
 
-          <!-- Empty State -->
           <div v-else class="empty-state">
             <div class="empty-icon">📊</div>
             <h3>Немає витрат</h3>

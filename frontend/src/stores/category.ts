@@ -91,7 +91,6 @@ export const useCategoryStore = defineStore('category', () => {
     try {
       await categoryService.delete(id)
 
-      // Видаляємо з масивів
       userCategories.value = userCategories.value.filter((c) => c.id !== id)
       allCategories.value = allCategories.value.filter((c) => c.id !== id)
 

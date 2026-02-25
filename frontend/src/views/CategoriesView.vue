@@ -126,7 +126,7 @@ async function confirmDelete(category: Category) {
             </div>
             <div v-else class="empty-state">
               У вас ще немає власних категорій.
-              <br>
+              <br />
               <router-link to="/categories/new" class="btn-create">Створити першу</router-link>
             </div>
           </section>

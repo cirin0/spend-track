@@ -14,11 +14,9 @@ export const useExpenseStore = defineStore('expense', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // Computed
   const hasExpenses = computed(() => expenses.value.length > 0)
   const totalAmount = computed(() => expenses.value.reduce((sum, exp) => sum + exp.amount, 0))
 
-  // Завантажити всі витрати
   async function fetchExpenses() {
     loading.value = true
     error.value = null
@@ -36,18 +34,16 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  // Створити витрату
   async function createExpense(data: CreateExpenseData) {
     loading.value = true
     error.value = null
 
     try {
       const newExpense = await expenseService.create(data)
-      // Переконуємося що expenses.value - це масив
       if (!Array.isArray(expenses.value)) {
         expenses.value = []
       }
-      expenses.value.unshift(newExpense) // Додаємо на початок
+      expenses.value.unshift(newExpense)
       return newExpense
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } }
@@ -59,7 +55,6 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  // Оновити витрату
   async function updateExpense(id: number, data: UpdateExpenseData) {
     loading.value = true
     error.value = null
@@ -84,7 +79,6 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  // Видалити витрату
   async function deleteExpense(id: number) {
     loading.value = true
     error.value = null
@@ -103,12 +97,10 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  // Отримати витрату по ID
   function getExpenseById(id: number): Expense | undefined {
     return expenses.value.find((e) => e.id === id)
   }
 
-  // Отримати статистику витрат по категоріях
   async function fetchStats() {
     loading.value = true
     error.value = null
@@ -126,7 +118,6 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  // Очистити помилку
   function clearError() {
     error.value = null
   }

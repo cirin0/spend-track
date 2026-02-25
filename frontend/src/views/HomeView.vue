@@ -26,10 +26,7 @@ async function handleCreateExpense(data: CreateExpenseData) {
   }
 }
 
-function resetForm() {
-  // Форма сама скидається після створення
-}
-
+function resetForm() {}
 
 function formatAmount(amount: number | string): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount
@@ -55,7 +52,6 @@ function formatDate(dateString: string): string {
         </div>
 
         <div class="dashboard-grid">
-          <!-- Форма додавання витрати -->
           <div class="quick-add-section">
             <ExpenseForm
               title="Швидке додавання витрати"
@@ -65,7 +61,6 @@ function formatDate(dateString: string): string {
             />
           </div>
 
-          <!-- Статистика -->
           <div class="stats-section">
             <div class="stats-card">
               <h2>Статистика витрат</h2>
@@ -124,7 +119,6 @@ function formatDate(dateString: string): string {
           </div>
         </div>
 
-        <!-- Останні витрати -->
         <div v-if="recentExpenses.length > 0" class="recent-expenses">
           <div class="section-header">
             <h2>Останні витрати</h2>
@@ -132,7 +126,10 @@ function formatDate(dateString: string): string {
           </div>
           <div class="expenses-list">
             <div v-for="expense in recentExpenses" :key="expense.id" class="expense-item">
-              <div class="expense-icon" :style="{ backgroundColor: expense.category?.color || '#6b7280' }">
+              <div
+                class="expense-icon"
+                :style="{ backgroundColor: expense.category?.color || '#6b7280' }"
+              >
                 {{ expense.category?.icon || '📁' }}
               </div>
               <div class="expense-details">
