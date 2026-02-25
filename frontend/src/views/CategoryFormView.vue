@@ -1,99 +1,31 @@
-<template>
-  <div class="category-form-container">
-    <div class="category-form-card">
-      <PageHeader
-        :title="isEditMode ? 'Редагувати категорію' : 'Створити категорію'"
-        back-to="/categories"
-      />
-
-      <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label for="name">Назва категорії *</label>
-          <input
-            id="name"
-            v-model="form.name"
-            type="text"
-            required
-            placeholder="Наприклад: Продукти"
-            maxlength="255"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="icon">Іконка (emoji)</label>
-          <input id="icon" v-model="form.icon" type="text" placeholder="🍕" maxlength="10" />
-          <small>Виберіть emoji іконку для категорії</small>
-        </div>
-
-        <div class="form-group">
-          <label for="color">Колір</label>
-          <div class="color-input-group">
-            <input id="color" v-model="form.color" type="color" class="color-picker" />
-            <input
-              v-model="form.color"
-              type="text"
-              placeholder="#667eea"
-              pattern="^#[0-9A-Fa-f]{6}$"
-              maxlength="7"
-              class="color-text"
-            />
-          </div>
-          <small>Виберіть колір для іконки категорії</small>
-        </div>
-
-        <!-- Preview -->
-        <div v-if="form.name || form.icon || form.color" class="preview-section">
-          <label>Попередній перегляд:</label>
-          <div class="category-preview">
-            <div class="preview-icon" :style="{ backgroundColor: form.color || '#e0e0e0' }">
-              {{ form.icon || '📁' }}
-            </div>
-            <span class="preview-name">{{ form.name || 'Назва категорії' }}</span>
-          </div>
-        </div>
-
-        <div v-if="categoryStore.error" class="error-message">
-          {{ categoryStore.error }}
-        </div>
-
-        <div class="form-actions">
-          <router-link to="/categories" class="btn-secondary">Скасувати</router-link>
-          <button type="submit" :disabled="categoryStore.loading || !form.name" class="btn-primary">
-            {{ categoryStore.loading ? 'Збереження...' : isEditMode ? 'Зберегти' : 'Створити' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCategoryStore } from '@/stores/category'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
 
 const router = useRouter()
 const route = useRoute()
 const categoryStore = useCategoryStore()
+const { marginLeft } = useSidebarMargin()
 
 const isEditMode = computed(() => !!route.params.id)
 const categoryId = computed(() => (route.params.id ? Number(route.params.id) : null))
 
 const form = reactive({
   name: '',
-  icon: '',
-  color: '#667eea',
+  icon: '📁',
+  color: '#2563eb',
 })
 
 onMounted(async () => {
   if (isEditMode.value && categoryId.value) {
-    // Завантажуємо категорії якщо ще не завантажено
     if (!categoryStore.hasCategories) {
       await categoryStore.fetchCategories()
     }
 
-    // Завантажуємо дані категорії для редагування
     const category = categoryStore.getCategoryById(categoryId.value)
     if (category) {
       if (category.is_default) {
@@ -102,8 +34,8 @@ onMounted(async () => {
         return
       }
       form.name = category.name
-      form.icon = category.icon || ''
-      form.color = category.color || '#667eea'
+      form.icon = category.icon || '📁'
+      form.color = category.color || '#2563eb'
     } else {
       alert('Категорію не знайдено')
       router.push('/categories')
@@ -133,23 +65,106 @@ async function handleSubmit() {
 }
 </script>
 
+<template>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <PageHeader
+          :title="isEditMode ? 'Редагувати категорію' : 'Створити категорію'"
+          back-to="/categories"
+        />
+
+        <div class="form-card">
+          <form @submit.prevent="handleSubmit">
+            <div class="form-group">
+              <label for="name">Назва категорії *</label>
+              <input
+                id="name"
+                v-model="form.name"
+                type="text"
+                required
+                placeholder="Наприклад: Продукти"
+                maxlength="255"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="icon">Іконка (emoji)</label>
+              <input id="icon" v-model="form.icon" type="text" placeholder="🍕" maxlength="10" />
+              <small>Виберіть emoji іконку для категорії</small>
+            </div>
+
+            <div class="form-group">
+              <label for="color">Колір</label>
+              <div class="color-input-group">
+                <input id="color" v-model="form.color" type="color" class="color-picker" />
+                <input
+                  v-model="form.color"
+                  type="text"
+                  placeholder="#2563eb"
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  maxlength="7"
+                  class="color-text"
+                />
+              </div>
+              <small>Виберіть колір для іконки категорії</small>
+            </div>
+
+            <div v-if="form.name || form.icon || form.color" class="preview-section">
+              <label>Попередній перегляд:</label>
+              <div class="category-preview">
+                <div class="preview-icon" :style="{ backgroundColor: form.color || '#6b7280' }">
+                  {{ form.icon || '📁' }}
+                </div>
+                <span class="preview-name">{{ form.name || 'Назва категорії' }}</span>
+              </div>
+            </div>
+
+            <div v-if="categoryStore.error" class="error-message">
+              {{ categoryStore.error }}
+            </div>
+
+            <div class="form-actions">
+              <router-link to="/categories" class="btn-secondary">Скасувати</router-link>
+              <button
+                type="submit"
+                :disabled="categoryStore.loading || !form.name"
+                class="btn-primary"
+              >
+                {{ categoryStore.loading ? 'Збереження...' : isEditMode ? 'Зберегти' : 'Створити' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style scoped>
-.category-form-container {
+.page-layout {
   display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.category-form-card {
-  background: white;
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
   padding: 40px;
+}
+
+.form-card {
+  background: var(--card-bg);
+  padding: 32px;
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 600px;
+  border: 1px solid var(--border-color);
 }
 
 .form-group {
@@ -159,7 +174,7 @@ async function handleSubmit() {
 label {
   display: block;
   margin-bottom: 8px;
-  color: #555;
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 14px;
 }
@@ -167,22 +182,24 @@ label {
 input[type='text'] {
   width: 100%;
   padding: 12px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 16px;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s;
   box-sizing: border-box;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 input[type='text']:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary-color);
 }
 
 small {
   display: block;
   margin-top: 6px;
-  color: #999;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -195,14 +212,15 @@ small {
 .color-picker {
   width: 60px;
   height: 48px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s;
+  background: var(--input-bg);
 }
 
 .color-picker:hover {
-  border-color: #667eea;
+  border-color: var(--primary-color);
 }
 
 .color-text {
@@ -212,8 +230,9 @@ small {
 .preview-section {
   margin: 30px 0;
   padding: 20px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 12px;
+  border: 1px solid var(--border-color);
 }
 
 .preview-section label {
@@ -225,9 +244,9 @@ small {
   align-items: center;
   gap: 15px;
   padding: 15px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 10px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid var(--border-color);
 }
 
 .preview-icon {
@@ -243,16 +262,17 @@ small {
 .preview-name {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 20px;
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .form-actions {
@@ -265,11 +285,11 @@ small {
 .btn-secondary {
   flex: 1;
   padding: 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   text-align: center;
   text-decoration: none;
   display: block;
@@ -277,12 +297,12 @@ small {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-color);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
+  background: var(--primary-hover);
   transform: translateY(-2px);
 }
 
@@ -292,21 +312,26 @@ small {
 }
 
 .btn-secondary {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--secondary-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: var(--hover-bg);
 }
 
 @media (max-width: 768px) {
-  .category-form-card {
-    padding: 24px;
+  .main-content {
+    margin-left: 80px;
   }
 
-  .form-header h1 {
-    font-size: 24px;
+  .content-wrapper {
+    padding: 20px;
+  }
+
+  .form-card {
+    padding: 20px;
   }
 
   .form-actions {

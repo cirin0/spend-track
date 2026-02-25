@@ -1,31 +1,3 @@
-<template>
-  <div class="page-header">
-    <!-- Back button -->
-    <router-link v-if="backTo" :to="backTo" class="btn-back">
-      <span class="back-icon">←</span>
-    </router-link>
-
-    <!-- Header content -->
-    <div class="header-content">
-      <!-- Icon (optional) -->
-      <div v-if="icon" class="header-icon" :style="{ backgroundColor: iconColor || '#e0e0e0' }">
-        {{ icon }}
-      </div>
-
-      <!-- Title section -->
-      <div class="header-title-section">
-        <h1 class="header-title">{{ title }}</h1>
-        <p v-if="subtitle" class="header-subtitle">{{ subtitle }}</p>
-      </div>
-    </div>
-
-    <!-- Actions slot -->
-    <div v-if="$slots.actions" class="header-actions">
-      <slot name="actions"></slot>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 interface Props {
   title: string
@@ -43,6 +15,29 @@ withDefaults(defineProps<Props>(), {
 })
 </script>
 
+<template>
+  <div class="page-header">
+    <router-link v-if="backTo" :to="backTo" class="btn-back">
+      <span class="back-icon">←</span>
+    </router-link>
+
+    <div class="header-content">
+      <div v-if="icon" class="header-icon" :style="{ backgroundColor: iconColor || '#6b7280' }">
+        {{ icon }}
+      </div>
+
+      <div class="header-title-section">
+        <h1 class="header-title">{{ title }}</h1>
+        <p v-if="subtitle" class="header-subtitle">{{ subtitle }}</p>
+      </div>
+    </div>
+
+    <div v-if="$slots.actions" class="header-actions">
+      <slot name="actions"></slot>
+    </div>
+  </div>
+</template>
+
 <style scoped>
 .page-header {
   display: flex;
@@ -50,7 +45,7 @@ withDefaults(defineProps<Props>(), {
   gap: 20px;
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-color);
   flex-wrap: wrap;
 }
 
@@ -58,21 +53,23 @@ withDefaults(defineProps<Props>(), {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: #f0f0f0;
+  background: var(--hover-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  color: #333;
+  color: var(--text-primary);
   font-size: 24px;
-  transition: all 0.3s;
+  transition: all 0.2s;
   flex-shrink: 0;
+  border: 1px solid var(--border-color);
 }
 
 .btn-back:hover {
-  background: #667eea;
+  background: var(--primary-color);
   color: white;
   transform: translateX(-3px);
+  border-color: var(--primary-color);
 }
 
 .back-icon {
@@ -105,8 +102,9 @@ withDefaults(defineProps<Props>(), {
 
 .header-title {
   font-size: 32px;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 5px 0;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -115,8 +113,8 @@ withDefaults(defineProps<Props>(), {
 .header-subtitle {
   display: inline-block;
   padding: 4px 10px;
-  background: #e3e7ff;
-  color: #667eea;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary-color);
   border-radius: 12px;
   font-size: 13px;
   font-weight: 600;

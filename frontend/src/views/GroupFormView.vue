@@ -1,110 +1,15 @@
-<template>
-  <div class="group-form-container">
-    <div class="group-form-page">
-      <PageHeader :title="isEdit ? 'Редагувати групу' : 'Створити групу'" back-to="/groups" />
-
-      <form @submit.prevent="handleSubmit" class="group-form">
-        <!-- Name -->
-        <div class="form-group">
-          <label for="name">Назва *</label>
-          <input
-            id="name"
-            v-model="form.name"
-            type="text"
-            required
-            class="form-control"
-            :class="{ error: errors.name }"
-            placeholder="Наприклад: Сім'я, Друзі, Колеги"
-            maxlength="100"
-            :disabled="formLoading"
-          />
-          <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
-        </div>
-
-        <!-- Description -->
-        <div class="form-group">
-          <label for="description">Опис</label>
-          <textarea
-            id="description"
-            v-model="form.description"
-            class="form-control"
-            :class="{ error: errors.description }"
-            placeholder="Необов'язково: додайте опис групи"
-            rows="3"
-            maxlength="500"
-            :disabled="formLoading"
-          ></textarea>
-          <span v-if="errors.description" class="error-text">{{ errors.description }}</span>
-          <div class="form-hint">{{ form.description.length }}/500 символів</div>
-        </div>
-
-        <!-- Icon -->
-        <div class="form-group">
-          <label for="icon">Іконка</label>
-          <div class="icon-picker">
-            <div
-              v-for="emoji in availableIcons"
-              :key="emoji"
-              class="icon-option"
-              :class="{ selected: form.icon === emoji }"
-              @click="form.icon = emoji"
-            >
-              {{ emoji }}
-            </div>
-          </div>
-          <span v-if="errors.icon" class="error-text">{{ errors.icon }}</span>
-        </div>
-
-        <!-- Color -->
-        <div class="form-group">
-          <label for="color">Колір</label>
-          <div class="color-picker">
-            <div
-              v-for="colorOption in availableColors"
-              :key="colorOption"
-              class="color-option"
-              :class="{ selected: form.color === colorOption }"
-              :style="{ backgroundColor: colorOption }"
-              @click="form.color = colorOption"
-            ></div>
-          </div>
-          <span v-if="errors.color" class="error-text">{{ errors.color }}</span>
-        </div>
-
-        <!-- Error Message -->
-        <div v-if="groupStore.error" class="error-message">
-          {{ groupStore.error }}
-        </div>
-
-        <!-- Actions -->
-        <div class="form-actions">
-          <button
-            type="button"
-            @click="router.push('/groups')"
-            class="btn-secondary"
-            :disabled="formLoading"
-          >
-            Скасувати
-          </button>
-          <button type="submit" class="btn-primary" :disabled="formLoading">
-            <span v-if="formLoading">...</span>
-            <span v-else>{{ isEdit ? 'Зберегти' : 'Створити групу' }}</span>
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGroupStore } from '@/stores/group'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
 
 const router = useRouter()
 const route = useRoute()
 const groupStore = useGroupStore()
+const { marginLeft } = useSidebarMargin()
 
 const isEdit = computed(() => !!route.params.id)
 const groupId = computed(() => (route.params.id ? Number(route.params.id) : null))
@@ -115,24 +20,10 @@ const form = ref({
   name: '',
   description: '',
   icon: '👥',
-  color: '#667eea',
+  color: '#2563eb',
 })
 
 const errors = ref<Record<string, string>>({})
-
-const availableIcons = ['👥', '👨‍👩‍👧‍👦', '🏠', '💼', '🎓', '⚽', '🎨', '🎮', '🍕', '✈️', '💰', '🎯']
-const availableColors = [
-  '#667eea',
-  '#764ba2',
-  '#f093fb',
-  '#4facfe',
-  '#43e97b',
-  '#fa709a',
-  '#fee140',
-  '#30cfd0',
-  '#a8edea',
-  '#ff6b6b',
-]
 
 onMounted(async () => {
   if (isEdit.value && groupId.value) {
@@ -149,17 +40,15 @@ async function loadGroupData() {
       name: groupStore.currentGroup.name,
       description: groupStore.currentGroup.description || '',
       icon: groupStore.currentGroup.icon || '👥',
-      color: groupStore.currentGroup.color || '#667eea',
+      color: groupStore.currentGroup.color || '#2563eb',
     }
   }
 }
 
 async function handleSubmit() {
-  // Reset errors
   errors.value = {}
   groupStore.clearError()
 
-  // Validate
   if (!form.value.name.trim()) {
     errors.value.name = 'Введіть назву групи'
     return
@@ -194,20 +83,132 @@ async function handleSubmit() {
 }
 </script>
 
+<template>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <PageHeader :title="isEdit ? 'Редагувати групу' : 'Створити групу'" back-to="/groups" />
+
+        <div class="form-card">
+          <form @submit.prevent="handleSubmit" class="group-form">
+            <div class="form-group">
+              <label for="name">Назва *</label>
+              <input
+                id="name"
+                v-model="form.name"
+                type="text"
+                required
+                class="form-control"
+                :class="{ error: errors.name }"
+                placeholder="Наприклад: Сім'я, Друзі, Колеги"
+                maxlength="100"
+                :disabled="formLoading"
+              />
+              <span v-if="errors.name" class="error-text">{{ errors.name }}</span>
+            </div>
+
+            <div class="form-group">
+              <label for="description">Опис</label>
+              <textarea
+                id="description"
+                v-model="form.description"
+                class="form-control"
+                :class="{ error: errors.description }"
+                placeholder="Необов'язково: додайте опис групи"
+                rows="3"
+                maxlength="500"
+                :disabled="formLoading"
+              ></textarea>
+              <span v-if="errors.description" class="error-text">{{ errors.description }}</span>
+              <div class="form-hint">{{ form.description.length }}/500 символів</div>
+            </div>
+
+            <div class="form-group">
+              <label for="icon">Іконка</label>
+              <input
+                id="icon"
+                v-model="form.icon"
+                type="text"
+                class="form-control"
+                placeholder="Наприклад: 🎉"
+                maxlength="10"
+                :disabled="formLoading"
+              />
+              <span v-if="errors.icon" class="error-text">{{ errors.icon }}</span>
+            </div>
+
+            <div class="form-group">
+              <label for="color">Колір</label>
+              <div class="color-input-group">
+                <input
+                  id="color"
+                  v-model="form.color"
+                  type="color"
+                  class="color-picker-input"
+                  :disabled="formLoading"
+                />
+                <input
+                  v-model="form.color"
+                  type="text"
+                  class="form-control color-text-input"
+                  placeholder="#2563eb"
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  maxlength="7"
+                  :disabled="formLoading"
+                />
+              </div>
+              <span v-if="errors.color" class="error-text">{{ errors.color }}</span>
+            </div>
+
+            <div v-if="groupStore.error" class="error-message">
+              {{ groupStore.error }}
+            </div>
+
+            <div class="form-actions">
+              <button
+                type="button"
+                @click="router.push('/groups')"
+                class="btn-secondary"
+                :disabled="formLoading"
+              >
+                Скасувати
+              </button>
+              <button type="submit" class="btn-primary" :disabled="formLoading">
+                <span v-if="formLoading">...</span>
+                <span v-else>{{ isEdit ? 'Зберегти' : 'Створити групу' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style scoped>
-.group-form-container {
+.page-layout {
+  display: flex;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.group-form-page {
-  max-width: 700px;
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
+  max-width: 900px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.form-card {
+  background: var(--card-bg);
+  padding: 32px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
 }
 
 .group-form {
@@ -224,31 +225,32 @@ async function handleSubmit() {
 
 label {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .form-control {
   padding: 12px 16px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 16px;
-  transition: all 0.3s;
+  transition: all 0.2s;
   font-family: inherit;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: var(--primary-color);
 }
 
 .form-control.error {
-  border-color: #c33;
+  border-color: var(--danger-color);
 }
 
 .form-control:disabled {
-  background: #f5f5f5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -258,77 +260,48 @@ textarea.form-control {
 }
 
 .error-text {
-  color: #c33;
+  color: var(--danger-color);
   font-size: 13px;
   font-weight: 500;
 }
 
 .form-hint {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
-.icon-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-  gap: 10px;
-}
-
-.icon-option {
-  width: 50px;
-  height: 50px;
+.color-input-group {
   display: flex;
+  gap: 12px;
   align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  border: 2px solid #e0e0e0;
+}
+
+.color-picker-input {
+  width: 60px;
+  height: 48px;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: border-color 0.2s;
+  background: var(--input-bg);
+  flex-shrink: 0;
 }
 
-.icon-option:hover {
-  border-color: #667eea;
-  transform: scale(1.1);
+.color-picker-input:hover {
+  border-color: var(--primary-color);
 }
 
-.icon-option.selected {
-  border-color: #667eea;
-  background: #f0f4ff;
-}
-
-.color-picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-  gap: 10px;
-}
-
-.color-option {
-  width: 50px;
-  height: 50px;
-  border: 3px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.color-option:hover {
-  transform: scale(1.1);
-}
-
-.color-option.selected {
-  border-color: #333;
-  box-shadow:
-    0 0 0 2px white,
-    0 0 0 4px #333;
+.color-text-input {
+  flex: 1;
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   padding: 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .form-actions {
@@ -341,21 +314,21 @@ textarea.form-control {
 .btn-secondary {
   flex: 1;
   padding: 14px 24px;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 10px;
+  font-weight: 700;
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   border: none;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-color);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
+  background: var(--primary-hover);
   transform: translateY(-2px);
 }
 
@@ -365,12 +338,13 @@ textarea.form-control {
 }
 
 .btn-secondary {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--secondary-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e0e0e0;
+  background: var(--hover-bg);
 }
 
 .btn-secondary:disabled {
@@ -379,7 +353,15 @@ textarea.form-control {
 }
 
 @media (max-width: 768px) {
-  .group-form-page {
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
+    padding: 20px;
+  }
+
+  .form-card {
     padding: 20px;
   }
 

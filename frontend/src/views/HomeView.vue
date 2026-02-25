@@ -1,174 +1,232 @@
-<template>
-  <div class="home-container">
-    <div class="home-card">
-      <h1>Spend Track</h1>
-      <p class="welcome">Вітаємо, {{ authStore.user?.name }}!</p>
-
-      <!-- Stats Section -->
-      <div v-if="expenseStore.stats" class="stats-section">
-        <h2>Статистика витрат</h2>
-
-        <div class="total-amount">
-          <span class="label">Загальна сума:</span>
-          <span class="amount">{{ formatAmount(expenseStore.stats.total) }} ₴</span>
-        </div>
-
-        <div v-if="expenseStore.stats.stats.length > 0" class="category-stats">
-          <div
-            v-for="stat in expenseStore.stats.stats"
-            :key="stat.category ? `category-${stat.category.id}` : 'no-category'"
-            class="stat-item"
-          >
-            <div class="stat-header">
-              <div class="category-info">
-                <div
-                  class="category-icon"
-                  :style="{ backgroundColor: stat.category?.color || '#e0e0e0' }"
-                >
-                  {{ stat.category?.icon || '📁' }}
-                </div>
-                <span class="category-name">{{ stat.category?.name || 'Без категорії' }}</span>
-              </div>
-              <div class="stat-values">
-                <span class="stat-amount">{{ formatAmount(stat.total) }} ₴</span>
-                <span class="stat-percentage">{{ stat.percentage }}%</span>
-              </div>
-            </div>
-            <div class="progress-bar">
-              <div
-                class="progress-fill"
-                :style="{
-                  width: stat.percentage + '%',
-                  backgroundColor: stat.category?.color || '#667eea',
-                }"
-              ></div>
-            </div>
-            <div class="stat-count">
-              {{ stat.count }} {{ stat.count === 1 ? 'витрата' : 'витрат' }}
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="no-stats">
-          <p>Ще немає витрат для відображення статистики</p>
-        </div>
-      </div>
-
-      <div class="menu">
-        <router-link to="/profile" class="menu-item">
-          <div class="icon">👤</div>
-          <div class="title">Профіль</div>
-        </router-link>
-
-        <router-link to="/expenses" class="menu-item">
-          <div class="icon">📊</div>
-          <div class="title">Витрати</div>
-        </router-link>
-
-        <router-link to="/categories" class="menu-item">
-          <div class="icon">📁</div>
-          <div class="title">Категорії</div>
-        </router-link>
-
-        <router-link to="/analytics" class="menu-item">
-          <div class="icon">📈</div>
-          <div class="title">Аналітика</div>
-        </router-link>
-
-        <router-link to="/groups" class="menu-item">
-          <div class="icon">👥</div>
-          <div class="title">Групи</div>
-        </router-link>
-
-        <button @click="handleLogout" class="menu-item logout">
-          <div class="icon">🚪</div>
-          <div class="title">Вийти</div>
-        </button>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useExpenseStore } from '@/stores/expense'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import AppSidebar from '@/components/AppSidebar.vue'
+import ExpenseForm from '@/components/ExpenseForm.vue'
+import type { CreateExpenseData } from '@/services/expenseService'
 
 const authStore = useAuthStore()
 const expenseStore = useExpenseStore()
+const { marginLeft } = useSidebarMargin()
 
-onMounted(async () => {
-  await expenseStore.fetchStats()
+const recentExpenses = computed(() => {
+  return expenseStore.expenses.slice(0, 5)
 })
 
-function handleLogout() {
-  if (confirm('Ви впевнені, що хочете вийти?')) {
-    authStore.logout()
+onMounted(async () => {
+  await Promise.all([expenseStore.fetchStats(), expenseStore.fetchExpenses()])
+})
+
+async function handleCreateExpense(data: CreateExpenseData) {
+  const result = await expenseStore.createExpense(data)
+  if (result) {
+    await expenseStore.fetchStats()
   }
 }
+
+function resetForm() {
+  // Форма сама скидається після створення
+}
+
 
 function formatAmount(amount: number | string): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount
   return num.toFixed(2)
 }
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' })
+}
 </script>
 
+<template>
+  <div class="home-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <div class="header">
+          <div>
+            <h1>Вітаємо, {{ authStore.user?.name }}!</h1>
+            <p class="subtitle">Керуйте своїми витратами ефективно</p>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Форма додавання витрати -->
+          <div class="quick-add-section">
+            <ExpenseForm
+              title="Швидке додавання витрати"
+              :loading="expenseStore.loading"
+              @submit="handleCreateExpense"
+              @cancel="resetForm"
+            />
+          </div>
+
+          <!-- Статистика -->
+          <div class="stats-section">
+            <div class="stats-card">
+              <h2>Статистика витрат</h2>
+
+              <div v-if="expenseStore.stats" class="stats-content">
+                <div class="total-amount">
+                  <span class="label">Загальна сума:</span>
+                  <span class="amount">{{ formatAmount(expenseStore.stats.total) }} ₴</span>
+                </div>
+
+                <div v-if="expenseStore.stats.stats.length > 0" class="category-stats">
+                  <div
+                    v-for="stat in expenseStore.stats.stats"
+                    :key="stat.category ? `category-${stat.category.id}` : 'no-category'"
+                    class="stat-item"
+                  >
+                    <div class="stat-header">
+                      <div class="category-info">
+                        <div
+                          class="category-icon"
+                          :style="{ backgroundColor: stat.category?.color || '#6b7280' }"
+                        >
+                          {{ stat.category?.icon || '📁' }}
+                        </div>
+                        <span class="category-name">{{
+                          stat.category?.name || 'Без категорії'
+                        }}</span>
+                      </div>
+                      <div class="stat-values">
+                        <span class="stat-amount">{{ formatAmount(stat.total) }} ₴</span>
+                        <span class="stat-percentage">{{ stat.percentage }}%</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar">
+                      <div
+                        class="progress-fill"
+                        :style="{
+                          width: stat.percentage + '%',
+                          backgroundColor: stat.category?.color || '#3b82f6',
+                        }"
+                      ></div>
+                    </div>
+                    <div class="stat-count">
+                      {{ stat.count }} {{ stat.count === 1 ? 'витрата' : 'витрат' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="no-stats">
+                  <p>Ще немає витрат для відображення статистики</p>
+                </div>
+              </div>
+
+              <div v-else class="loading">Завантаження статистики...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Останні витрати -->
+        <div v-if="recentExpenses.length > 0" class="recent-expenses">
+          <div class="section-header">
+            <h2>Останні витрати</h2>
+            <router-link to="/expenses" class="view-all">Переглянути всі →</router-link>
+          </div>
+          <div class="expenses-list">
+            <div v-for="expense in recentExpenses" :key="expense.id" class="expense-item">
+              <div class="expense-icon" :style="{ backgroundColor: expense.category?.color || '#6b7280' }">
+                {{ expense.category?.icon || '📁' }}
+              </div>
+              <div class="expense-details">
+                <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
+                <div class="expense-meta">
+                  {{ expense.category?.name || 'Без категорії' }} • {{ formatDate(expense.date) }}
+                </div>
+              </div>
+              <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style scoped>
-.home-container {
+.home-layout {
   display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.home-card {
-  background: white;
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
   padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 800px;
+}
+
+.header {
+  margin-bottom: 40px;
 }
 
 h1 {
-  margin-bottom: 10px;
-  text-align: center;
-  color: #333;
   font-size: 32px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
 }
 
-.welcome {
-  text-align: center;
-  color: #666;
-  font-size: 18px;
-  margin-bottom: 30px;
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
 }
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.quick-add-section,
 .stats-section {
-  background: #f8f9fa;
+  min-height: 400px;
+}
+
+.stats-card {
+  background: var(--card-bg);
   padding: 24px;
   border-radius: 12px;
-  margin-bottom: 30px;
+  border: 1px solid var(--border-color);
+  height: 100%;
 }
 
-.stats-section h2 {
+.stats-card h2 {
   font-size: 20px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 20px;
-  text-align: center;
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .total-amount {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
   border-radius: 10px;
-  margin-bottom: 20px;
   color: white;
+}
+
+[data-theme='light'] .total-amount {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
 }
 
 .total-amount .label {
@@ -177,7 +235,7 @@ h1 {
 }
 
 .total-amount .amount {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
 }
 
@@ -188,10 +246,10 @@ h1 {
 }
 
 .stat-item {
-  background: white;
+  background: var(--bg-secondary);
   padding: 16px;
   border-radius: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-color);
 }
 
 .stat-header {
@@ -219,7 +277,7 @@ h1 {
 
 .category-name {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .stat-values {
@@ -231,14 +289,14 @@ h1 {
 .stat-amount {
   font-size: 18px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--primary-color);
 }
 
 .stat-percentage {
   font-size: 14px;
   font-weight: 600;
-  color: #666;
-  background: #f0f0f0;
+  color: var(--text-secondary);
+  background: var(--hover-bg);
   padding: 4px 8px;
   border-radius: 6px;
 }
@@ -246,7 +304,7 @@ h1 {
 .progress-bar {
   width: 100%;
   height: 8px;
-  background: #e0e0e0;
+  background: var(--border-color);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -260,74 +318,118 @@ h1 {
 
 .stat-count {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
   text-align: right;
 }
 
-.no-stats {
+.no-stats,
+.loading {
   text-align: center;
   padding: 40px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
-.menu {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 20px;
+.recent-expenses {
+  background: var(--card-bg);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
 }
 
-.menu-item {
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.view-all {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.view-all:hover {
+  color: var(--primary-hover);
+}
+
+.expenses-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.expense-item {
+  display: flex;
   align-items: center;
-  padding: 30px 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  text-decoration: none;
-  color: #333;
-  transition: all 0.3s;
-  cursor: pointer;
-  border: 2px solid transparent;
-  position: relative;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s;
 }
 
-.menu-item:not(.disabled):not(.logout):hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-  border-color: #667eea;
+.expense-item:hover {
+  transform: translateX(4px);
 }
 
-.menu-item.logout {
-  background: #fee;
-  border: none;
+.expense-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
 }
 
-.menu-item.logout:hover {
-  background: #fdd;
-  transform: translateY(-5px);
+.expense-details {
+  flex: 1;
 }
 
-.icon {
-  font-size: 48px;
-  margin-bottom: 10px;
-}
-
-.title {
+.expense-description {
   font-weight: 600;
-  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.expense-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.expense-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .home-card {
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
     padding: 20px;
   }
 
-  .stats-section {
-    padding: 16px;
-  }
-
-  .total-amount .amount {
-    font-size: 20px;
+  h1 {
+    font-size: 24px;
   }
 
   .stat-header {
@@ -339,10 +441,6 @@ h1 {
   .stat-values {
     width: 100%;
     justify-content: space-between;
-  }
-
-  .menu {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

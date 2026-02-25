@@ -1,104 +1,15 @@
-<template>
-  <div class="categories-container">
-    <div class="categories-page">
-      <PageHeader title="Категорії" back-to="/">
-        <template #actions>
-          <router-link to="/categories/new" class="btn-primary">+ Створити категорію</router-link>
-        </template>
-      </PageHeader>
-
-      <div v-if="categoryStore.loading && !categoryStore.hasCategories" class="loading">
-        Завантаження...
-      </div>
-
-      <div v-else-if="categoryStore.error" class="error-message">
-        {{ categoryStore.error }}
-        <button @click="categoryStore.fetchCategories()" class="btn-retry">Спробувати знову</button>
-      </div>
-
-      <div v-else class="categories-content">
-        <!-- Дефолтні категорії -->
-        <section class="category-section">
-          <h2>📦 Системні категорії</h2>
-          <p class="section-description">Категорії доступні для всіх користувачів</p>
-
-          <div v-if="categoryStore.defaultCategories.length > 0" class="categories-grid">
-            <div
-              v-for="category in categoryStore.defaultCategories"
-              :key="'default-' + category.id"
-              class="category-card default clickable"
-              @click="viewCategoryExpenses(category)"
-            >
-              <div class="category-icon" :style="{ backgroundColor: category.color || '#e0e0e0' }">
-                {{ category.icon || '📁' }}
-              </div>
-              <div class="category-info">
-                <h3>{{ category.name }}</h3>
-                <span class="category-badge">Системна</span>
-              </div>
-              <div class="view-icon">→</div>
-            </div>
-          </div>
-          <div v-else class="empty-state">Немає системних категорій</div>
-        </section>
-
-        <!-- Користувацькі категорії -->
-        <section class="category-section">
-          <h2>✨ Мої категорії</h2>
-          <p class="section-description">Ваші власні категорії</p>
-
-          <div v-if="categoryStore.userCategories.length > 0" class="categories-grid">
-            <div
-              v-for="category in categoryStore.userCategories"
-              :key="'user-' + category.id"
-              class="category-card user clickable"
-            >
-              <div class="card-content" @click="viewCategoryExpenses(category)">
-                <div
-                  class="category-icon"
-                  :style="{ backgroundColor: category.color || '#e0e0e0' }"
-                >
-                  {{ category.icon || '📁' }}
-                </div>
-                <div class="category-info">
-                  <h3>{{ category.name }}</h3>
-                  <span class="category-badge user">Моя</span>
-                </div>
-                <div class="view-icon">→</div>
-              </div>
-              <div class="category-actions">
-                <button @click.stop="editCategory(category.id)" class="btn-icon" title="Редагувати">
-                  ✏️
-                </button>
-                <button
-                  @click.stop="confirmDelete(category)"
-                  class="btn-icon delete"
-                  title="Видалити"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-          </div>
-          <div v-else class="empty-state">
-            У вас ще немає власних категорій.
-            <router-link to="/categories/new">Створити першу</router-link>
-          </div>
-        </section>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCategoryStore } from '@/stores/category'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import type { Category } from '@/services/categoryService'
 import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
 
 const router = useRouter()
 const categoryStore = useCategoryStore()
+const { marginLeft } = useSidebarMargin()
 
 onMounted(async () => {
   await categoryStore.fetchCategories()
@@ -122,64 +33,171 @@ async function confirmDelete(category: Category) {
 }
 </script>
 
+<template>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <PageHeader title="Категорії" back-to="/">
+          <template #actions>
+            <router-link to="/categories/new" class="btn-primary">+ Створити категорію</router-link>
+          </template>
+        </PageHeader>
+
+        <div v-if="categoryStore.loading && !categoryStore.hasCategories" class="loading">
+          Завантаження...
+        </div>
+
+        <div v-else-if="categoryStore.error" class="error-message">
+          {{ categoryStore.error }}
+          <button @click="categoryStore.fetchCategories()" class="btn-retry">
+            Спробувати знову
+          </button>
+        </div>
+
+        <div v-else class="categories-content">
+          <section class="category-section">
+            <h2>📦 Системні категорії</h2>
+            <p class="section-description">Категорії доступні для всіх користувачів</p>
+
+            <div v-if="categoryStore.defaultCategories.length > 0" class="categories-grid">
+              <div
+                v-for="category in categoryStore.defaultCategories"
+                :key="'default-' + category.id"
+                class="category-card default clickable"
+                @click="viewCategoryExpenses(category)"
+              >
+                <div
+                  class="category-icon"
+                  :style="{ backgroundColor: category.color || '#6b7280' }"
+                >
+                  {{ category.icon || '📁' }}
+                </div>
+                <div class="category-info">
+                  <h3>{{ category.name }}</h3>
+                  <span class="category-badge">Системна</span>
+                </div>
+                <div class="view-icon">→</div>
+              </div>
+            </div>
+            <div v-else class="empty-state">Немає системних категорій</div>
+          </section>
+
+          <section class="category-section">
+            <h2>✨ Мої категорії</h2>
+            <p class="section-description">Ваші власні категорії</p>
+
+            <div v-if="categoryStore.userCategories.length > 0" class="categories-grid">
+              <div
+                v-for="category in categoryStore.userCategories"
+                :key="'user-' + category.id"
+                class="category-card user clickable"
+              >
+                <div class="card-content" @click="viewCategoryExpenses(category)">
+                  <div
+                    class="category-icon"
+                    :style="{ backgroundColor: category.color || '#6b7280' }"
+                  >
+                    {{ category.icon || '📁' }}
+                  </div>
+                  <div class="category-info">
+                    <h3>{{ category.name }}</h3>
+                    <span class="category-badge user">Моя</span>
+                  </div>
+                  <div class="view-icon">→</div>
+                </div>
+                <div class="category-actions">
+                  <button
+                    @click.stop="editCategory(category.id)"
+                    class="btn-icon"
+                    title="Редагувати"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    @click.stop="confirmDelete(category)"
+                    class="btn-icon delete"
+                    title="Видалити"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state">
+              У вас ще немає власних категорій.
+              <br>
+              <router-link to="/categories/new" class="btn-create">Створити першу</router-link>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style scoped>
-.categories-container {
+.page-layout {
+  display: flex;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.categories-page {
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary {
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: 10px;
   text-decoration: none;
-  font-weight: 600;
-  transition: all 0.3s;
+  font-weight: 700;
+  transition: all 0.2s;
   cursor: pointer;
   border: none;
   font-size: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-color);
   color: white;
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-hover);
   transform: translateY(-2px);
 }
 
 .loading {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 18px;
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
   margin-bottom: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-retry {
   margin-top: 10px;
-  padding: 8px 16px;
-  background: #c33;
+  padding: 10px 20px;
+  background: var(--danger-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .categories-content {
@@ -190,12 +208,12 @@ async function confirmDelete(category: Category) {
 
 .category-section h2 {
   font-size: 24px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .section-description {
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 20px;
 }
 
@@ -206,14 +224,14 @@ async function confirmDelete(category: Category) {
 }
 
 .category-card {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 15px;
-  transition: all 0.3s;
+  transition: all 0.2s;
   position: relative;
 }
 
@@ -222,17 +240,13 @@ async function confirmDelete(category: Category) {
 }
 
 .category-card.clickable:hover {
-  border-color: #667eea;
-  background: #f0f4ff;
-}
-
-.category-card:hover {
+  border-color: var(--primary-color);
   transform: translateY(-3px);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .category-card.user {
-  border-color: #667eea;
+  border-color: var(--primary-color);
 }
 
 .card-content {
@@ -262,7 +276,7 @@ async function confirmDelete(category: Category) {
 .category-info h3 {
   margin: 0 0 5px 0;
   font-size: 18px;
-  color: #333;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -271,24 +285,24 @@ async function confirmDelete(category: Category) {
 .category-badge {
   display: inline-block;
   padding: 3px 8px;
-  background: #e0e0e0;
-  color: #666;
+  background: var(--hover-bg);
+  color: var(--text-secondary);
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
 }
 
 .category-badge.user {
-  background: #e3e7ff;
-  color: #667eea;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary-color);
 }
 
 .view-icon {
-  color: #667eea;
+  color: var(--primary-color);
   font-size: 24px;
   font-weight: bold;
   opacity: 0;
-  transition: all 0.3s;
+  transition: all 0.2s;
   margin-left: auto;
 }
 
@@ -306,10 +320,10 @@ async function confirmDelete(category: Category) {
   width: 36px;
   height: 36px;
   border: none;
-  background: #f0f0f0;
+  background: var(--hover-bg);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   font-size: 16px;
   display: flex;
   align-items: center;
@@ -317,23 +331,23 @@ async function confirmDelete(category: Category) {
 }
 
 .btn-icon:hover {
-  background: #e0e0e0;
+  background: var(--secondary-bg);
   transform: scale(1.1);
 }
 
 .btn-icon.delete:hover {
-  background: #fee;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 16px;
 }
 
 .empty-state a {
-  color: #667eea;
+  color: var(--primary-color);
   text-decoration: none;
   font-weight: 600;
 }
@@ -342,25 +356,31 @@ async function confirmDelete(category: Category) {
   text-decoration: underline;
 }
 
+.btn-create {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: var(--primary-color);
+  color: white !important;
+  text-decoration: none !important;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.btn-create:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  text-decoration: none !important;
+}
+
 @media (max-width: 768px) {
-  .categories-page {
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
     padding: 20px;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-direction: column;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
-    text-align: center;
   }
 
   .categories-grid {

@@ -17,6 +17,11 @@ import GroupDetailView from '@/views/GroupDetailView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+     {
+      path: '/:pathMath(.*)*',
+      name: 'NotFound',
+      redirect: '/'
+    },
     {
       path: '/',
       name: 'home',
@@ -38,89 +43,87 @@ const router = createRouter({
     {
       path: '/profile',
       name: 'profile',
-      component: ProfileView,
+      component: import ('../views/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/categories',
       name: 'categories',
-      component: CategoriesView,
+      component: import('../views/CategoriesView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/categories/new',
       name: 'category-new',
-      component: CategoryFormView,
+      component: import ('../views/CategoryFormView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/categories/:id/edit',
       name: 'category-edit',
-      component: CategoryFormView,
+      component: import('../views/CategoryFormView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/categories/:slug/expenses',
       name: 'category-expenses',
-      component: CategoryExpensesView,
+      component: import('../views/CategoryExpensesView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/expenses',
       name: 'expenses',
-      component: ExpensesView,
+      component: import('../views/ExpensesView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/expenses/new',
       name: 'expense-new',
-      component: ExpenseFormView,
+      component: import('../views/ExpenseFormView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/expenses/:id/edit',
       name: 'expense-edit',
-      component: ExpenseFormView,
+      component: import('../views/ExpenseFormView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/analytics',
       name: 'analytics',
-      component: AnalyticsView,
+      component: import('../views/AnalyticsView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/groups',
       name: 'groups',
-      component: GroupsView,
+      component: import('../views/GroupsView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/groups/new',
       name: 'group-new',
-      component: GroupFormView,
+      component: import('../views/GroupFormView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/groups/:id',
       name: 'group-detail',
-      component: GroupDetailView,
+      component: import('../views/GroupDetailView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/groups/:id/edit',
       name: 'group-edit',
-      component: GroupFormView,
+      component: import('../views/GroupFormView.vue'),
       meta: { requiresAuth: true },
     },
   ],
 })
 
-// Navigation guards
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
-  // Ініціалізуємо auth store якщо ще не ініціалізовано
   if (!authStore.token) {
     authStore.initAuth()
   }
@@ -130,10 +133,8 @@ router.beforeEach((to, from, next) => {
   const isAuthenticated = authStore.isAuthenticated
 
   if (requiresAuth && !isAuthenticated) {
-    // Потрібна авторизація, але користувач не авторизований
     next('/login')
   } else if (requiresGuest && isAuthenticated) {
-    // Сторінка тільки для гостей, але користувач авторизований
     next('/')
   } else {
     next()

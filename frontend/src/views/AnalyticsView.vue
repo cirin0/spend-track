@@ -18,7 +18,11 @@ import analyticsService, {
   type AnalyticsCharts,
 } from '@/services/analyticsService'
 import { categoryService, type Category } from '@/services/categoryService'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
+
+const { marginLeft } = useSidebarMargin()
 
 ChartJS.register(
   ArcElement,
@@ -118,12 +122,12 @@ const barChartOptions = {
 
 const getCategoryDetails = (categoryId: number | null) => {
   if (!categoryId) {
-    return { icon: '📁', color: '#e0e0e0' }
+    return { icon: '📁', color: '#6b7280' }
   }
   const cat = categories.value.get(categoryId)
   return {
     icon: cat?.icon || '📁',
-    color: cat?.color || '#e0e0e0',
+    color: cat?.color || '#6b7280',
   }
 }
 
@@ -153,8 +157,8 @@ const monthlyTrendData = computed(() => {
       {
         label: 'Витрати',
         data: charts.value.monthly.map((item) => item.amount),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgb(37, 99, 235)',
+        backgroundColor: 'rgba(37, 99, 235, 0.2)',
         tension: 0.1,
       },
     ],
@@ -237,202 +241,242 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="analytics-container">
-    <div class="analytics-page">
-      <PageHeader title="Аналітика" back-to="/">
-        <template #actions>
-          <select v-model="selectedPeriod" @change="loadData" class="period-select">
-            <option value="week">Тиждень</option>
-            <option value="month">Місяць</option>
-            <option value="quarter">Квартал</option>
-            <option value="year">Рік</option>
-            <option value="all">Весь час</option>
-          </select>
-        </template>
-      </PageHeader>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <PageHeader title="Аналітика" back-to="/">
+          <template #actions>
+            <select v-model="selectedPeriod" @change="loadData" class="period-select">
+              <option value="week">Тиждень</option>
+              <option value="month">Місяць</option>
+              <option value="quarter">Квартал</option>
+              <option value="year">Рік</option>
+              <option value="all">Весь час</option>
+            </select>
+          </template>
+        </PageHeader>
 
-      <div v-if="loading" class="loading">Завантаження...</div>
+        <div v-if="loading" class="loading">Завантаження...</div>
 
-      <div v-else-if="error" class="error-message">
-        {{ error }}
-        <button @click="loadData" class="btn-retry">Спробувати знову</button>
-      </div>
-
-      <div v-else-if="summary">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Всього категорій</div>
-            <div class="stat-value">{{ summary.categories?.length || 0 }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Загальна сума</div>
-            <div class="stat-value">{{ formatAmount(summary.total_amount) }} ₴</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Середньо на день</div>
-            <div class="stat-value">{{ formatAmount(summary.averages.daily) }} ₴</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Період</div>
-            <div class="stat-value-small">
-              {{ formatDate(summary.period.start_date) }} -
-              {{ formatDate(summary.period.end_date) }}
-            </div>
-          </div>
+        <div v-else-if="error" class="error-message">
+          {{ error }}
+          <button @click="loadData" class="btn-retry">Спробувати знову</button>
         </div>
 
-        <div class="charts-section">
-          <div class="chart-card">
-            <h3>Витрати за категоріями</h3>
-            <div class="chart-wrapper">
-              <Pie v-if="categoryChartData" :data="categoryChartData" :options="pieChartOptions" />
-            </div>
-          </div>
-
-          <div class="chart-card wide">
-            <h3>Тренд витрат за місяцями</h3>
-            <div class="chart-wrapper">
-              <Line v-if="monthlyTrendData" :data="monthlyTrendData" :options="lineChartOptions" />
-            </div>
-          </div>
-
-          <div class="chart-card wide">
-            <h3>Топ категорій</h3>
-            <div class="chart-wrapper">
-              <Bar v-if="topCategoriesData" :data="topCategoriesData" :options="barChartOptions" />
-            </div>
-          </div>
-        </div>
-
-        <div class="category-details">
-          <h3>Детальна статистика за категоріями</h3>
-          <div class="category-list">
-            <div
-              v-for="cat in summary.categories"
-              :key="cat.category_id || 'uncategorized'"
-              class="category-item"
-            >
-              <div class="category-info">
-                <div
-                  class="category-icon-small"
-                  :style="{ backgroundColor: getCategoryDetails(cat.category_id).color }"
-                >
-                  {{ getCategoryDetails(cat.category_id).icon }}
+        <div v-else-if="summary">
+          <div v-if="summary.categories && summary.categories.length > 0">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">Всього категорій</div>
+                <div class="stat-value">{{ summary.categories?.length || 0 }}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Загальна сума</div>
+                <div class="stat-value">{{ formatAmount(summary.total_amount) }} ₴</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Середньо на день</div>
+                <div class="stat-value">{{ formatAmount(summary.averages.daily) }} ₴</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Період</div>
+                <div class="stat-value-small">
+                  {{ formatDate(summary.period.start_date) }} -
+                  {{ formatDate(summary.period.end_date) }}
                 </div>
-                <div class="category-name">{{ cat.category_name }}</div>
               </div>
-              <div class="category-stats">
-                <div class="category-amount">{{ formatAmount(cat.amount) }} ₴</div>
-                <div class="category-percentage">{{ cat.percentage.toFixed(1) }}%</div>
+            </div>
+
+          <div class="charts-section">
+            <div class="chart-card">
+              <h3>Витрати за категоріями</h3>
+              <div class="chart-wrapper">
+                <Pie
+                  v-if="categoryChartData"
+                  :data="categoryChartData"
+                  :options="pieChartOptions"
+                />
+              </div>
+            </div>
+
+            <div class="chart-card wide">
+              <h3>Тренд витрат за місяцями</h3>
+              <div class="chart-wrapper">
+                <Line
+                  v-if="monthlyTrendData"
+                  :data="monthlyTrendData"
+                  :options="lineChartOptions"
+                />
+              </div>
+            </div>
+
+            <div class="chart-card wide">
+              <h3>Топ категорій</h3>
+              <div class="chart-wrapper">
+                <Bar
+                  v-if="topCategoriesData"
+                  :data="topCategoriesData"
+                  :options="barChartOptions"
+                />
               </div>
             </div>
           </div>
+
+          <div class="category-details">
+            <h3>Детальна статистика за категоріями</h3>
+            <div class="category-list">
+              <div
+                v-for="cat in summary.categories"
+                :key="cat.category_id || 'uncategorized'"
+                class="category-item"
+              >
+                <div class="category-info">
+                  <div
+                    class="category-icon-small"
+                    :style="{ backgroundColor: getCategoryDetails(cat.category_id).color }"
+                  >
+                    {{ getCategoryDetails(cat.category_id).icon }}
+                  </div>
+                  <div class="category-name">{{ cat.category_name }}</div>
+                </div>
+                <div class="category-stats">
+                  <div class="category-amount">{{ formatAmount(cat.amount) }} ₴</div>
+                  <div class="category-percentage">{{ cat.percentage.toFixed(1) }}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else class="empty-state">
+            <div class="empty-icon">📊</div>
+            <h3>Немає даних для аналітики</h3>
+            <p>Додайте витрати, щоб побачити статистику та графіки</p>
+            <router-link to="/expenses/new" class="btn-primary">Додати витрату</router-link>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
-.analytics-container {
+.page-layout {
+  display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2rem 1rem;
+  background: var(--bg-primary);
 }
 
-.analytics-page {
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 40px;
 }
 
 .period-select {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 8px;
-  background: white;
-  font-size: 0.9rem;
+  padding: 12px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  transition: border-color 0.2s;
+}
+
+.period-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
 }
 
 .loading {
   text-align: center;
-  padding: 4rem 2rem;
-  color: white;
-  font-size: 1.2rem;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  font-size: 18px;
 }
 
 .error-message {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 2rem;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 20px;
   border-radius: 12px;
   text-align: center;
-  color: #dc3545;
-  margin-bottom: 2rem;
+  color: var(--danger-color);
+  margin-bottom: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-retry {
-  margin-top: 1rem;
-  padding: 0.5rem 1.5rem;
-  background: #667eea;
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: var(--danger-color);
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  transition: opacity 0.2s;
 }
 
 .btn-retry:hover {
-  background: #5568d3;
-  transform: translateY(-2px);
+  opacity: 0.9;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1.5rem;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: white;
+}
+
+[data-theme='light'] .stat-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
 }
 
 .stat-label {
-  font-size: 0.85rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 8px;
+  font-weight: 600;
 }
 
 .stat-value {
-  font-size: 1.8rem;
+  font-size: 28px;
   font-weight: 700;
-  color: #333;
 }
 
 .stat-value-small {
-  font-size: 0.95rem;
+  font-size: 15px;
   font-weight: 600;
-  color: #333;
 }
 
 .charts-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 24px;
+  margin-bottom: 30px;
 }
 
 .chart-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1.5rem;
+  background: var(--card-bg);
+  padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .chart-card.wide {
@@ -440,10 +484,10 @@ onMounted(async () => {
 }
 
 .chart-card h3 {
-  margin: 0 0 1rem 0;
-  color: #333;
-  font-size: 1.1rem;
-  font-weight: 600;
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .chart-wrapper {
@@ -453,44 +497,44 @@ onMounted(async () => {
 }
 
 .category-details {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1.5rem;
+  background: var(--card-bg);
+  padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .category-details h3 {
-  margin: 0 0 1rem 0;
-  color: #333;
-  font-size: 1.1rem;
-  font-weight: 600;
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .category-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .category-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
 }
 
 .category-item:hover {
-  background: #e9ecef;
   transform: translateX(4px);
 }
 
 .category-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .category-icon-small {
@@ -500,38 +544,81 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 18px;
 }
 
 .category-name {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .category-stats {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .category-amount {
   font-weight: 700;
-  color: #667eea;
-  font-size: 1.1rem;
+  color: var(--primary-color);
+  font-size: 18px;
 }
 
 .category-percentage {
-  background: #667eea;
+  background: var(--primary-color);
   color: white;
-  padding: 0.25rem 0.75rem;
+  padding: 4px 12px;
   border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.empty-state .empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-bottom: 30px;
+}
+
+.empty-state .btn-primary {
+  display: inline-block;
+  padding: 12px 24px;
+  background: var(--primary-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.empty-state .btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
-  .analytics-container {
-    padding: 1rem 0.5rem;
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
+    padding: 20px;
   }
 
   .charts-section {
@@ -549,7 +636,7 @@ onMounted(async () => {
   .category-stats {
     flex-direction: column;
     align-items: flex-end;
-    gap: 0.25rem;
+    gap: 4px;
   }
 }
 </style>

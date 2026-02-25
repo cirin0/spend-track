@@ -1,177 +1,346 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useGroupStore } from '@/stores/group'
+import { useAuthStore } from '@/stores/auth'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import type { GroupExpense } from '@/services/groupService'
+import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
+
+const router = useRouter()
+const route = useRoute()
+const groupStore = useGroupStore()
+const authStore = useAuthStore()
+const { marginLeft } = useSidebarMargin()
+
+const groupId = computed(() => Number(route.params.id))
+const loading = ref(false)
+const activeTab = ref<'expenses' | 'categories' | 'members'>('expenses')
+
+const isOwner = computed(() => {
+  return groupStore.currentGroup?.owner.id === authStore.user?.id
+})
+
+const isMember = computed(() => {
+  return groupStore.currentGroup?.members?.some((m) => m.id === authStore.user?.id)
+})
+
+const showAddExpenseModal = ref(false)
+const showAddCategoryModal = ref(false)
+const showAddMemberModal = ref(false)
+
+const expenseForm = ref({
+  category_id: 0,
+  amount: 0,
+  date: new Date().toISOString().split('T')[0] as string,
+  description: '',
+})
+
+const categoryForm = ref({
+  name: '',
+  icon: '📁',
+  color: '#2563eb',
+})
+
+const memberForm = ref({
+  user_id: 0,
+})
+
+onMounted(async () => {
+  loading.value = true
+  await groupStore.fetchGroupById(groupId.value)
+  await groupStore.fetchCategories(groupId.value)
+  await groupStore.fetchExpenses(groupId.value)
+  loading.value = false
+})
+
+async function handleAddExpense() {
+  const result = await groupStore.createExpense(groupId.value, {
+    category_id: expenseForm.value.category_id,
+    amount: expenseForm.value.amount,
+    date: expenseForm.value.date,
+    description: expenseForm.value.description,
+  })
+
+  if (result) {
+    showAddExpenseModal.value = false
+    expenseForm.value = {
+      category_id: 0,
+      amount: 0,
+      date: new Date().toISOString().split('T')[0] as string,
+      description: '',
+    }
+  }
+}
+
+async function handleAddCategory() {
+  const result = await groupStore.createCategory(groupId.value, {
+    name: categoryForm.value.name,
+    icon: categoryForm.value.icon,
+    color: categoryForm.value.color,
+  })
+
+  if (result) {
+    showAddCategoryModal.value = false
+    categoryForm.value = {
+      name: '',
+      icon: '📁',
+      color: '#2563eb',
+    }
+  }
+}
+
+async function handleAddMember() {
+  const success = await groupStore.addMember(groupId.value, memberForm.value.user_id)
+
+  if (success) {
+    showAddMemberModal.value = false
+    memberForm.value = { user_id: 0 }
+    await groupStore.fetchGroupById(groupId.value)
+  }
+}
+
+async function deleteCategoryById(categoryId: number) {
+  if (confirm('Ви впевнені, що хочете видалити цю категорію?')) {
+    await groupStore.deleteCategory(groupId.value, categoryId)
+  }
+}
+
+async function deleteExpenseById(expenseId: number) {
+  if (confirm('Ви впевнені, що хочете видалити цю витрату?')) {
+    await groupStore.deleteExpense(groupId.value, expenseId)
+  }
+}
+
+async function removeMemberById(userId: number) {
+  if (confirm('Ви впевнені, що хочете видалити цього учасника?')) {
+    await groupStore.removeMember(groupId.value, userId)
+    await groupStore.fetchGroupById(groupId.value)
+  }
+}
+
+async function handleLeave() {
+  if (confirm('Ви впевнені, що хочете вийти з групи?')) {
+    const success = await groupStore.leaveGroup(groupId.value)
+    if (success) {
+      router.push('/groups')
+    }
+  }
+}
+
+function canEditExpense(expense: GroupExpense): boolean {
+  return expense.user.id === authStore.user?.id || isOwner.value
+}
+
+function formatAmount(amount: number | string): string {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  return num.toFixed(2)
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('uk-UA', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+</script>
+
 <template>
-  <div class="group-detail-container">
-    <div class="group-detail-page">
-      <PageHeader
-        :title="groupStore.currentGroup?.name || 'Група'"
-        :subtitle="groupStore.currentGroup?.description || undefined"
-        :icon="groupStore.currentGroup?.icon || undefined"
-        :icon-color="groupStore.currentGroup?.color || undefined"
-        back-to="/groups"
-      >
-        <template #actions>
-          <button
-            v-if="isOwner"
-            @click="router.push(`/groups/${groupId}/edit`)"
-            class="btn-secondary"
-          >
-            ✏️ Редагувати
-          </button>
-          <button v-if="!isOwner" @click="handleLeave" class="btn-danger">🚪 Вийти з групи</button>
-        </template>
-      </PageHeader>
-
-      <!-- Loading -->
-      <div v-if="loading" class="loading">Завантаження...</div>
-
-      <!-- Error -->
-      <div v-else-if="groupStore.error" class="error-message">
-        {{ groupStore.error }}
-      </div>
-
-      <!-- Tabs -->
-      <div v-else class="tabs-container">
-        <div class="tabs">
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'expenses' }"
-            @click="activeTab = 'expenses'"
-          >
-            📊 Витрати
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'categories' }"
-            @click="activeTab = 'categories'"
-          >
-            📁 Категорії
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'members' }"
-            @click="activeTab = 'members'"
-          >
-            👥 Учасники
-          </button>
-        </div>
-
-        <!-- Expenses Tab -->
-        <div v-if="activeTab === 'expenses'" class="tab-content">
-          <div class="tab-header">
-            <h3>Витрати групи</h3>
-            <button @click="showAddExpenseModal = true" class="btn-primary">
-              + Додати витрату
-            </button>
-          </div>
-
-          <div v-if="groupStore.expenses.length > 0" class="expenses-list">
-            <div v-for="expense in groupStore.expenses" :key="expense.id" class="expense-item">
-              <div class="expense-category">
-                <div
-                  class="category-icon-small"
-                  :style="{
-                    backgroundColor: expense.category?.color || '#e0e0e0',
-                  }"
-                >
-                  {{ expense.category?.icon || '📁' }}
-                </div>
-              </div>
-              <div class="expense-details">
-                <div class="expense-header">
-                  <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
-                  <div class="expense-date">{{ formatDate(expense.date) }}</div>
-                </div>
-                <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
-                <div class="expense-meta">{{ expense.user.name }}</div>
-              </div>
-              <div v-if="canEditExpense(expense)" class="expense-actions">
-                <button @click="deleteExpenseById(expense.id)" class="btn-icon delete">🗑️</button>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="empty-state">
-            <p>Немає витрат у цій групі</p>
-          </div>
-        </div>
-
-        <!-- Categories Tab -->
-        <div v-if="activeTab === 'categories'" class="tab-content">
-          <div class="tab-header">
-            <h3>Категорії групи</h3>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <PageHeader
+          :title="groupStore.currentGroup?.name || 'Група'"
+          :subtitle="groupStore.currentGroup?.description || undefined"
+          :icon="groupStore.currentGroup?.icon || undefined"
+          :icon-color="groupStore.currentGroup?.color || undefined"
+          back-to="/groups"
+        >
+          <template #actions>
             <button
-              v-if="isOwner || isMember"
-              @click="showAddCategoryModal = true"
-              class="btn-primary"
+              v-if="isOwner"
+              @click="router.push(`/groups/${groupId}/edit`)"
+              class="btn-secondary"
             >
-              + Додати категорію
+              ✏️ Редагувати
             </button>
-          </div>
+            <button v-if="!isOwner" @click="handleLeave" class="btn-danger">
+              🚪 Вийти з групи
+            </button>
+          </template>
+        </PageHeader>
 
-          <div v-if="groupStore.categories.length > 0" class="categories-grid">
-            <div v-for="category in groupStore.categories" :key="category.id" class="category-card">
-              <div class="category-icon" :style="{ backgroundColor: category.color || '#e0e0e0' }">
-                {{ category.icon || '📁' }}
-              </div>
-              <div class="category-name">{{ category.name }}</div>
-              <div v-if="isOwner" class="category-actions">
-                <button @click="deleteCategoryById(category.id)" class="btn-icon delete">🗑️</button>
-              </div>
-            </div>
-          </div>
+        <div v-if="loading" class="loading">Завантаження...</div>
 
-          <div v-else class="empty-state">
-            <p>Немає категорій у цій групі</p>
-          </div>
+        <div v-else-if="groupStore.error" class="error-message">
+          {{ groupStore.error }}
         </div>
 
-        <!-- Members Tab -->
-        <div v-if="activeTab === 'members'" class="tab-content">
-          <div class="tab-header">
-            <h3>Учасники групи</h3>
-            <button v-if="isOwner" @click="showAddMemberModal = true" class="btn-primary">
-              + Додати учасника
+        <div v-else class="tabs-container">
+          <div class="tabs">
+            <button
+              class="tab"
+              :class="{ active: activeTab === 'expenses' }"
+              @click="activeTab = 'expenses'"
+            >
+              📊 Витрати
+            </button>
+            <button
+              class="tab"
+              :class="{ active: activeTab === 'categories' }"
+              @click="activeTab = 'categories'"
+            >
+              📁 Категорії
+            </button>
+            <button
+              class="tab"
+              :class="{ active: activeTab === 'members' }"
+              @click="activeTab = 'members'"
+            >
+              👥 Учасники
             </button>
           </div>
 
-          <div
-            v-if="groupStore.currentGroup?.members && groupStore.currentGroup.members.length > 0"
-            class="members-list"
-          >
-            <div
-              v-for="member in groupStore.currentGroup.members"
-              :key="member.id"
-              class="member-item"
-            >
-              <div class="member-info">
-                <div class="member-avatar">{{ member.name.charAt(0).toUpperCase() }}</div>
-                <div>
-                  <div class="member-name">
-                    {{ member.name }}
-                    <span v-if="member.id === groupStore.currentGroup?.owner.id" class="owner-badge"
-                      >👑 Власник</span
-                    >
+          <!-- Expenses Tab -->
+          <div v-if="activeTab === 'expenses'" class="tab-content">
+            <div class="tab-header">
+              <h3>Витрати групи</h3>
+              <button @click="showAddExpenseModal = true" class="btn-primary">
+                + Додати витрату
+              </button>
+            </div>
+
+            <div v-if="groupStore.expenses.length > 0" class="expenses-list">
+              <div v-for="expense in groupStore.expenses" :key="expense.id" class="expense-item">
+                <div class="expense-category">
+                  <div
+                    class="category-icon-small"
+                    :style="{
+                      backgroundColor: expense.category?.color || '#6b7280',
+                    }"
+                  >
+                    {{ expense.category?.icon || '📁' }}
                   </div>
-                  <div class="member-email">{{ member.email }}</div>
+                </div>
+                <div class="expense-details">
+                  <div class="expense-header">
+                    <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+                    <div class="expense-date">{{ formatDate(expense.date) }}</div>
+                  </div>
+                  <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
+                  <div class="expense-meta">{{ expense.user.name }}</div>
+                </div>
+                <div v-if="canEditExpense(expense)" class="expense-actions">
+                  <button @click="deleteExpenseById(expense.id)" class="btn-icon delete">
+                    🗑️
+                  </button>
                 </div>
               </div>
-              <div
-                v-if="isOwner && member.id !== groupStore.currentGroup?.owner.id"
-                class="member-actions"
-              >
-                <button @click="removeMemberById(member.id)" class="btn-icon delete">🗑️</button>
-              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              <p>Немає витрат у цій групі</p>
             </div>
           </div>
 
-          <div v-else class="empty-state">
-            <p>Немає учасників</p>
+          <!-- Categories Tab -->
+          <div v-if="activeTab === 'categories'" class="tab-content">
+            <div class="tab-header">
+              <h3>Категорії групи</h3>
+              <button
+                v-if="isOwner || isMember"
+                @click="showAddCategoryModal = true"
+                class="btn-primary"
+              >
+                + Додати категорію
+              </button>
+            </div>
+
+            <div v-if="groupStore.categories.length > 0" class="categories-grid">
+              <div
+                v-for="category in groupStore.categories"
+                :key="category.id"
+                class="category-card"
+              >
+                <div
+                  class="category-icon"
+                  :style="{ backgroundColor: category.color || '#6b7280' }"
+                >
+                  {{ category.icon || '📁' }}
+                </div>
+                <div class="category-name">{{ category.name }}</div>
+                <div v-if="isOwner" class="category-actions">
+                  <button @click="deleteCategoryById(category.id)" class="btn-icon delete">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              <p>Немає категорій у цій групі</p>
+            </div>
+          </div>
+
+          <!-- Members Tab -->
+          <div v-if="activeTab === 'members'" class="tab-content">
+            <div class="tab-header">
+              <h3>Учасники групи</h3>
+              <button v-if="isOwner" @click="showAddMemberModal = true" class="btn-primary">
+                + Додати учасника
+              </button>
+            </div>
+
+            <div
+              v-if="groupStore.currentGroup?.members && groupStore.currentGroup.members.length > 0"
+              class="members-list"
+            >
+              <div
+                v-for="member in groupStore.currentGroup.members"
+                :key="member.id"
+                class="member-item"
+              >
+                <div class="member-info">
+                  <div class="member-avatar">{{ member.name.charAt(0).toUpperCase() }}</div>
+                  <div>
+                    <div class="member-name">
+                      {{ member.name }}
+                      <span
+                        v-if="member.id === groupStore.currentGroup?.owner.id"
+                        class="owner-badge"
+                        >👑 Власник</span
+                      >
+                    </div>
+                    <div class="member-email">{{ member.email }}</div>
+                  </div>
+                </div>
+                <div
+                  v-if="isOwner && member.id !== groupStore.currentGroup?.owner.id"
+                  class="member-actions"
+                >
+                  <button @click="removeMemberById(member.id)" class="btn-icon delete">🗑️</button>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              <p>Немає учасників</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
 
-    <!-- Add Expense Modal (Simple) -->
-    <div v-if="showAddExpenseModal" class="modal-overlay" @click.self="showAddExpenseModal = false">
+    <!-- Add Expense Modal -->
+    <div
+      v-if="showAddExpenseModal"
+      class="modal-overlay"
+      @click.self="showAddExpenseModal = false"
+    >
       <div class="modal">
         <h3>Додати витрату</h3>
         <form @submit.prevent="handleAddExpense">
@@ -270,168 +439,22 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useGroupStore } from '@/stores/group'
-import { useAuthStore } from '@/stores/auth'
-import type { GroupExpense } from '@/services/groupService'
-import PageHeader from '@/components/PageHeader.vue'
-
-const router = useRouter()
-const route = useRoute()
-const groupStore = useGroupStore()
-const authStore = useAuthStore()
-
-const groupId = computed(() => Number(route.params.id))
-const loading = ref(false)
-const activeTab = ref<'expenses' | 'categories' | 'members'>('expenses')
-
-const isOwner = computed(() => {
-  return groupStore.currentGroup?.owner.id === authStore.user?.id
-})
-
-const isMember = computed(() => {
-  return groupStore.currentGroup?.members?.some((m) => m.id === authStore.user?.id)
-})
-
-// Modals
-const showAddExpenseModal = ref(false)
-const showAddCategoryModal = ref(false)
-const showAddMemberModal = ref(false)
-
-const expenseForm = ref({
-  category_id: 0,
-  amount: 0,
-  date: new Date().toISOString().split('T')[0] as string,
-  description: '',
-})
-
-const categoryForm = ref({
-  name: '',
-  icon: '📁',
-  color: '#667eea',
-})
-
-const memberForm = ref({
-  user_id: 0,
-})
-
-onMounted(async () => {
-  loading.value = true
-  await groupStore.fetchGroupById(groupId.value)
-  await groupStore.fetchCategories(groupId.value)
-  await groupStore.fetchExpenses(groupId.value)
-  loading.value = false
-})
-
-async function handleAddExpense() {
-  const result = await groupStore.createExpense(groupId.value, {
-    category_id: expenseForm.value.category_id,
-    amount: expenseForm.value.amount,
-    date: expenseForm.value.date,
-    description: expenseForm.value.description || undefined,
-  })
-
-  if (result) {
-    showAddExpenseModal.value = false
-    expenseForm.value = {
-      category_id: 0,
-      amount: 0,
-      date: new Date().toISOString().split('T')[0] as string,
-      description: '',
-    }
-  }
-}
-
-async function handleAddCategory() {
-  const result = await groupStore.createCategory(groupId.value, {
-    name: categoryForm.value.name,
-    icon: categoryForm.value.icon || undefined,
-    color: categoryForm.value.color || undefined,
-  })
-
-  if (result) {
-    showAddCategoryModal.value = false
-    categoryForm.value = {
-      name: '',
-      icon: '📁',
-      color: '#667eea',
-    }
-  }
-}
-
-async function handleAddMember() {
-  const success = await groupStore.addMember(groupId.value, memberForm.value.user_id)
-
-  if (success) {
-    showAddMemberModal.value = false
-    memberForm.value = { user_id: 0 }
-    await groupStore.fetchGroupById(groupId.value)
-  }
-}
-
-async function deleteCategoryById(categoryId: number) {
-  if (confirm('Ви впевнені, що хочете видалити цю категорію?')) {
-    await groupStore.deleteCategory(groupId.value, categoryId)
-  }
-}
-
-async function deleteExpenseById(expenseId: number) {
-  if (confirm('Ви впевнені, що хочете видалити цю витрату?')) {
-    await groupStore.deleteExpense(groupId.value, expenseId)
-  }
-}
-
-async function removeMemberById(userId: number) {
-  if (confirm('Ви впевнені, що хочете видалити цього учасника?')) {
-    await groupStore.removeMember(groupId.value, userId)
-    await groupStore.fetchGroupById(groupId.value)
-  }
-}
-
-async function handleLeave() {
-  if (confirm('Ви впевнені, що хочете вийти з групи?')) {
-    const success = await groupStore.leaveGroup(groupId.value)
-    if (success) {
-      router.push('/groups')
-    }
-  }
-}
-
-function canEditExpense(expense: GroupExpense): boolean {
-  return expense.user.id === authStore.user?.id || isOwner.value
-}
-
-function formatAmount(amount: number | string): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount
-  return num.toFixed(2)
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('uk-UA', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-</script>
-
 <style scoped>
-.group-detail-container {
+.page-layout {
+  display: flex;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.group-detail-page {
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
 .btn-secondary {
@@ -439,14 +462,15 @@ function formatDate(dateString: string): string {
   border-radius: 8px;
   font-weight: 600;
   border: none;
-  background: #f0f0f0;
-  color: #333;
+  background: var(--secondary-bg);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: var(--hover-bg);
 }
 
 .btn-danger {
@@ -454,28 +478,30 @@ function formatDate(dateString: string): string {
   border-radius: 8px;
   font-weight: 600;
   border: none;
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-danger:hover {
-  background: #fdd;
+  background: rgba(239, 68, 68, 0.2);
 }
 
 .loading {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .tabs-container {
@@ -485,7 +511,7 @@ function formatDate(dateString: string): string {
 .tabs {
   display: flex;
   gap: 10px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--border-color);
   margin-bottom: 30px;
 }
 
@@ -495,19 +521,19 @@ function formatDate(dateString: string): string {
   background: none;
   cursor: pointer;
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   border-bottom: 3px solid transparent;
-  transition: all 0.3s;
+  transition: all 0.2s;
   margin-bottom: -2px;
 }
 
 .tab:hover {
-  color: #667eea;
+  color: var(--primary-color);
 }
 
 .tab.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
 }
 
 .tab-content {
@@ -533,7 +559,8 @@ function formatDate(dateString: string): string {
 .tab-header h3 {
   margin: 0;
   font-size: 20px;
-  color: #333;
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
 .btn-primary {
@@ -541,14 +568,14 @@ function formatDate(dateString: string): string {
   border-radius: 8px;
   font-weight: 600;
   border: none;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-color);
   color: white;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-hover);
   transform: translateY(-2px);
 }
 
@@ -559,13 +586,19 @@ function formatDate(dateString: string): string {
 }
 
 .expense-item {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
   display: flex;
   gap: 15px;
   align-items: center;
+  transition: all 0.2s;
+}
+
+.expense-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow);
 }
 
 .expense-category {
@@ -597,23 +630,23 @@ function formatDate(dateString: string): string {
 .expense-amount {
   font-size: 20px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--primary-color);
 }
 
 .expense-date {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .expense-description {
-  color: #333;
+  color: var(--text-primary);
   font-size: 15px;
   margin-bottom: 4px;
 }
 
 .expense-meta {
   font-size: 13px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .expense-actions {
@@ -624,15 +657,15 @@ function formatDate(dateString: string): string {
   width: 36px;
   height: 36px;
   border: none;
-  background: #f0f0f0;
+  background: var(--hover-bg);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   font-size: 16px;
 }
 
 .btn-icon.delete:hover {
-  background: #fee;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .categories-grid {
@@ -642,8 +675,8 @@ function formatDate(dateString: string): string {
 }
 
 .category-card {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -651,6 +684,12 @@ function formatDate(dateString: string): string {
   align-items: center;
   gap: 10px;
   position: relative;
+  transition: all 0.2s;
+}
+
+.category-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow);
 }
 
 .category-icon {
@@ -665,7 +704,7 @@ function formatDate(dateString: string): string {
 
 .category-name {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   text-align: center;
 }
 
@@ -682,13 +721,19 @@ function formatDate(dateString: string): string {
 }
 
 .member-item {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.2s;
+}
+
+.member-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow);
 }
 
 .member-info {
@@ -701,7 +746,7 @@ function formatDate(dateString: string): string {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-color);
   color: white;
   display: flex;
   align-items: center;
@@ -712,7 +757,7 @@ function formatDate(dateString: string): string {
 
 .member-name {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -720,7 +765,8 @@ function formatDate(dateString: string): string {
 
 .owner-badge {
   font-size: 12px;
-  background: #fff3cd;
+  background: rgba(234, 179, 8, 0.1);
+  color: #ca8a04;
   padding: 2px 8px;
   border-radius: 12px;
   font-weight: 600;
@@ -728,13 +774,13 @@ function formatDate(dateString: string): string {
 
 .member-email {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 /* Modal */
@@ -752,18 +798,20 @@ function formatDate(dateString: string): string {
 }
 
 .modal {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 30px;
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+  border: 1px solid var(--border-color);
 }
 
 .modal h3 {
   margin-top: 0;
   margin-bottom: 20px;
+  color: var(--text-primary);
 }
 
 .form-group {
@@ -774,21 +822,24 @@ function formatDate(dateString: string): string {
   display: block;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--text-primary);
+  font-size: 14px;
 }
 
 .form-control {
   width: 100%;
   padding: 10px 12px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 16px;
   font-family: inherit;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary-color);
 }
 
 .modal-actions {
@@ -802,7 +853,11 @@ function formatDate(dateString: string): string {
 }
 
 @media (max-width: 768px) {
-  .group-detail-page {
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
     padding: 20px;
   }
 

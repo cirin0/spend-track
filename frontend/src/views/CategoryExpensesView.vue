@@ -1,76 +1,15 @@
-<template>
-  <div class="expenses-container">
-    <div class="expenses-page">
-      <!-- Header -->
-      <PageHeader
-        :title="category?.name || 'Витрати категорії'"
-        :subtitle="
-          category ? (category.is_default ? 'Системна категорія' : 'Моя категорія') : undefined
-        "
-        :icon="category?.icon || undefined"
-        :icon-color="category?.color || undefined"
-        back-to="/categories"
-      />
-
-      <!-- Loading -->
-      <div v-if="loading" class="loading">Завантаження витрат...</div>
-
-      <!-- Error -->
-      <div v-else-if="error" class="error-message">
-        {{ error }}
-        <button @click="loadExpenses" class="btn-retry">Спробувати знову</button>
-      </div>
-
-      <!-- Content -->
-      <div v-else>
-        <!-- Stats -->
-        <div class="stats-section">
-          <div class="stat-card">
-            <div class="stat-label">Всього витрат</div>
-            <div class="stat-value">{{ expensesData?.count || 0 }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Загальна сума</div>
-            <div class="stat-value">{{ formatAmount(expensesData?.total || 0) }} ₴</div>
-          </div>
-        </div>
-
-        <!-- Expenses List -->
-        <div v-if="expensesData && expensesData.data.length > 0" class="expenses-list">
-          <h2>Список витрат</h2>
-          <div class="expense-card" v-for="expense in expensesData.data" :key="expense.id">
-            <div class="expense-header">
-              <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
-              <div class="expense-date">{{ formatDate(expense.date) }}</div>
-            </div>
-            <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
-            <div class="expense-footer">
-              <span class="expense-id">ID: {{ expense.id }}</span>
-              <span class="expense-time">{{ formatDateTime(expense.created_at) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else class="empty-state">
-          <div class="empty-icon">📊</div>
-          <h3>Немає витрат</h3>
-          <p>У цій категорії ще немає жодної витрати</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { expenseService, type ExpensesByCategoryResponse } from '@/services/expenseService'
 import { useCategoryStore } from '@/stores/category'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
 
 const route = useRoute()
 const categoryStore = useCategoryStore()
+const { marginLeft } = useSidebarMargin()
 
 const categorySlug = computed(() => route.params.slug as string)
 
@@ -133,44 +72,114 @@ function formatDateTime(dateString: string): string {
 }
 </script>
 
+<template>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <!-- Header -->
+        <PageHeader
+          :title="category?.name || 'Витрати категорії'"
+          :subtitle="
+            category ? (category.is_default ? 'Системна категорія' : 'Моя категорія') : undefined
+          "
+          :icon="category?.icon || undefined"
+          :icon-color="category?.color || undefined"
+          back-to="/categories"
+        />
+
+        <!-- Loading -->
+        <div v-if="loading" class="loading">Завантаження витрат...</div>
+
+        <!-- Error -->
+        <div v-else-if="error" class="error-message">
+          {{ error }}
+          <button @click="loadExpenses" class="btn-retry">Спробувати знову</button>
+        </div>
+
+        <!-- Content -->
+        <div v-else>
+          <!-- Stats -->
+          <div class="stats-section">
+            <div class="stat-card">
+              <div class="stat-label">Всього витрат</div>
+              <div class="stat-value">{{ expensesData?.count || 0 }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Загальна сума</div>
+              <div class="stat-value">{{ formatAmount(expensesData?.total || 0) }} ₴</div>
+            </div>
+          </div>
+
+          <!-- Expenses List -->
+          <div v-if="expensesData && expensesData.data.length > 0" class="expenses-list">
+            <h2>Список витрат</h2>
+            <div class="expense-card" v-for="expense in expensesData.data" :key="expense.id">
+              <div class="expense-header">
+                <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+                <div class="expense-date">{{ formatDate(expense.date) }}</div>
+              </div>
+              <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
+              <div class="expense-footer">
+                <span class="expense-id">ID: {{ expense.id }}</span>
+                <span class="expense-time">{{ formatDateTime(expense.created_at) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else class="empty-state">
+            <div class="empty-icon">📊</div>
+            <h3>Немає витрат</h3>
+            <p>У цій категорії ще немає жодної витрати</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style scoped>
-.expenses-container {
+.page-layout {
+  display: flex;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.expenses-page {
-  max-width: 1000px;
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
+  max-width: 1200px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
 .loading {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 18px;
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-retry {
   margin-top: 10px;
-  padding: 8px 16px;
-  background: #c33;
+  padding: 10px 20px;
+  background: var(--danger-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
 }
@@ -187,17 +196,21 @@ function formatDateTime(dateString: string): string {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
   padding: 24px;
   border-radius: 12px;
   color: white;
+}
+
+[data-theme='light'] .stat-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
 }
 
 .stat-label {
   font-size: 14px;
   opacity: 0.9;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .stat-value {
@@ -207,23 +220,24 @@ function formatDateTime(dateString: string): string {
 
 .expenses-list h2 {
   font-size: 22px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 20px;
+  font-weight: 700;
 }
 
 .expense-card {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 15px;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .expense-card:hover {
-  border-color: #667eea;
+  border-color: var(--primary-color);
   transform: translateX(5px);
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .expense-header {
@@ -236,17 +250,17 @@ function formatDateTime(dateString: string): string {
 .expense-amount {
   font-size: 24px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--primary-color);
 }
 
 .expense-date {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .expense-description {
-  color: #333;
+  color: var(--text-primary);
   font-size: 16px;
   margin-bottom: 12px;
   line-height: 1.5;
@@ -257,9 +271,9 @@ function formatDateTime(dateString: string): string {
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-color);
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .empty-state {
@@ -275,17 +289,21 @@ function formatDateTime(dateString: string): string {
 
 .empty-state h3 {
   font-size: 24px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .empty-state p {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 16px;
 }
 
 @media (max-width: 768px) {
-  .expenses-page {
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
     padding: 20px;
   }
 
@@ -295,12 +313,6 @@ function formatDateTime(dateString: string): string {
 
   .expense-amount {
     font-size: 20px;
-  }
-
-  .category-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
   }
 }
 </style>

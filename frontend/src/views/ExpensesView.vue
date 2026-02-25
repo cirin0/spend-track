@@ -1,92 +1,15 @@
-<template>
-  <div class="expenses-container">
-    <div class="expenses-page">
-      <PageHeader title="Витрати" back-to="/">
-        <template #actions>
-          <router-link to="/expenses/new" class="btn-primary">+ Додати витрату</router-link>
-        </template>
-      </PageHeader>
-
-      <!-- Loading -->
-      <div v-if="expenseStore.loading && !expenseStore.hasExpenses" class="loading">
-        Завантаження...
-      </div>
-
-      <!-- Error -->
-      <div v-else-if="expenseStore.error" class="error-message">
-        {{ expenseStore.error }}
-        <button @click="expenseStore.fetchExpenses()" class="btn-retry">Спробувати знову</button>
-      </div>
-
-      <!-- Content -->
-      <div v-else>
-        <!-- Stats -->
-        <div v-if="expenseStore.hasExpenses" class="stats-section">
-          <div class="stat-card">
-            <div class="stat-label">Всього витрат</div>
-            <div class="stat-value">{{ expenseStore.expenses.length }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Загальна сума</div>
-            <div class="stat-value">{{ formatAmount(expenseStore.totalAmount) }} ₴</div>
-          </div>
-        </div>
-
-        <!-- Expenses List -->
-        <div v-if="expenseStore.hasExpenses" class="expenses-list">
-          <div class="expense-card" v-for="expense in expenseStore.expenses" :key="expense.id">
-            <div class="expense-main">
-              <div class="expense-category">
-                <div
-                  class="category-icon-small"
-                  :style="{ backgroundColor: expense.category?.color || '#e0e0e0' }"
-                >
-                  {{ expense.category?.icon || '📁' }}
-                </div>
-                <div class="category-name">{{ expense.category?.name || 'Без категорії' }}</div>
-              </div>
-
-              <div class="expense-details">
-                <div class="expense-header">
-                  <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
-                  <div class="expense-date">{{ formatDate(expense.date) }}</div>
-                </div>
-                <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
-              </div>
-            </div>
-
-            <div class="expense-actions">
-              <button @click="editExpense(expense.id)" class="btn-icon" title="Редагувати">
-                ✏️
-              </button>
-              <button @click="confirmDelete(expense)" class="btn-icon delete" title="Видалити">
-                🗑️
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else class="empty-state">
-          <div class="empty-icon">💸</div>
-          <h3>Немає витрат</h3>
-          <p>Почніть додавати свої витрати для відстеження бюджету</p>
-          <router-link to="/expenses/new" class="btn-primary">Додати першу витрату</router-link>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExpenseStore } from '@/stores/expense'
+import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import type { Expense } from '@/services/expenseService'
 import PageHeader from '@/components/PageHeader.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
 
 const router = useRouter()
 const expenseStore = useExpenseStore()
+const { marginLeft } = useSidebarMargin()
 
 onMounted(async () => {
   await expenseStore.fetchExpenses()
@@ -122,65 +45,152 @@ function formatDate(dateString: string): string {
 }
 </script>
 
+<template>
+  <div class="page-layout">
+    <AppSidebar />
+    <main class="main-content" :style="{ marginLeft }">
+      <div class="content-wrapper">
+        <PageHeader title="Витрати" back-to="/">
+          <template #actions>
+            <router-link to="/expenses/new" class="btn-primary">+ Додати витрату</router-link>
+          </template>
+        </PageHeader>
+
+        <!-- Loading -->
+        <div v-if="expenseStore.loading && !expenseStore.hasExpenses" class="loading">
+          Завантаження...
+        </div>
+
+        <!-- Error -->
+        <div v-else-if="expenseStore.error" class="error-message">
+          {{ expenseStore.error }}
+          <button @click="expenseStore.fetchExpenses()" class="btn-retry">Спробувати знову</button>
+        </div>
+
+        <!-- Content -->
+        <div v-else>
+          <!-- Stats -->
+          <div v-if="expenseStore.hasExpenses" class="stats-section">
+            <div class="stat-card">
+              <div class="stat-label">Всього витрат</div>
+              <div class="stat-value">{{ expenseStore.expenses.length }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Загальна сума</div>
+              <div class="stat-value">{{ formatAmount(expenseStore.totalAmount) }} ₴</div>
+            </div>
+          </div>
+
+          <!-- Expenses List -->
+          <div v-if="expenseStore.hasExpenses" class="expenses-list">
+            <div class="expense-card" v-for="expense in expenseStore.expenses" :key="expense.id">
+              <div class="expense-main">
+                <div class="expense-category">
+                  <div
+                    class="category-icon-small"
+                    :style="{ backgroundColor: expense.category?.color || '#6b7280' }"
+                  >
+                    {{ expense.category?.icon || '📁' }}
+                  </div>
+                  <div class="category-name">{{ expense.category?.name || 'Без категорії' }}</div>
+                </div>
+
+                <div class="expense-details">
+                  <div class="expense-header">
+                    <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+                    <div class="expense-date">{{ formatDate(expense.date) }}</div>
+                  </div>
+                  <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
+                </div>
+              </div>
+
+              <div class="expense-actions">
+                <button @click="editExpense(expense.id)" class="btn-icon" title="Редагувати">
+                  ✏️
+                </button>
+                <button @click="confirmDelete(expense)" class="btn-icon delete" title="Видалити">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else class="empty-state">
+            <div class="empty-icon">💸</div>
+            <h3>Немає витрат</h3>
+            <p>Почніть додавати свої витрати для відстеження бюджету</p>
+            <router-link to="/expenses/new" class="btn-primary">Додати першу витрату</router-link>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <style scoped>
-.expenses-container {
+.page-layout {
+  display: flex;
   min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.expenses-page {
-  max-width: 1000px;
+.main-content {
+  flex: 1;
+  transition: margin-left 0.3s ease;
+}
+
+.content-wrapper {
+  max-width: 1200px;
   margin: 0 auto;
-  background: white;
-  border-radius: 12px;
   padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary {
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: 10px;
   text-decoration: none;
-  font-weight: 600;
-  transition: all 0.3s;
+  font-weight: 700;
+  transition: all 0.2s;
   cursor: pointer;
   border: none;
   font-size: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-color);
   color: white;
   display: inline-block;
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-hover);
   transform: translateY(-2px);
 }
 
 .loading {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 18px;
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-retry {
   margin-top: 10px;
-  padding: 8px 16px;
-  background: #c33;
+  padding: 10px 20px;
+  background: var(--danger-color);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  transition: opacity 0.2s;
 }
 
 .btn-retry:hover {
@@ -195,17 +205,21 @@ function formatDate(dateString: string): string {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
   padding: 24px;
   border-radius: 12px;
   color: white;
+}
+
+[data-theme='light'] .stat-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
 }
 
 .stat-label {
   font-size: 14px;
   opacity: 0.9;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .stat-value {
@@ -220,21 +234,21 @@ function formatDate(dateString: string): string {
 }
 
 .expense-card {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 15px;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .expense-card:hover {
-  border-color: #667eea;
+  border-color: var(--primary-color);
   transform: translateX(5px);
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .expense-main {
@@ -265,7 +279,7 @@ function formatDate(dateString: string): string {
 
 .category-name {
   font-size: 11px;
-  color: #666;
+  color: var(--text-secondary);
   text-align: center;
   max-width: 80px;
   white-space: nowrap;
@@ -289,19 +303,19 @@ function formatDate(dateString: string): string {
 .expense-amount {
   font-size: 24px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--primary-color);
   white-space: nowrap;
 }
 
 .expense-date {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .expense-description {
-  color: #333;
+  color: var(--text-primary);
   font-size: 16px;
   line-height: 1.4;
   overflow: hidden;
@@ -322,10 +336,10 @@ function formatDate(dateString: string): string {
   width: 36px;
   height: 36px;
   border: none;
-  background: #f0f0f0;
+  background: var(--hover-bg);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   font-size: 16px;
   display: flex;
   align-items: center;
@@ -333,12 +347,12 @@ function formatDate(dateString: string): string {
 }
 
 .btn-icon:hover {
-  background: #e0e0e0;
+  background: var(--secondary-bg);
   transform: scale(1.1);
 }
 
 .btn-icon.delete:hover {
-  background: #fee;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .empty-state {
@@ -354,18 +368,22 @@ function formatDate(dateString: string): string {
 
 .empty-state h3 {
   font-size: 24px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .empty-state p {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 16px;
   margin-bottom: 30px;
 }
 
 @media (max-width: 768px) {
-  .expenses-page {
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .content-wrapper {
     padding: 20px;
   }
 

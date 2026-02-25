@@ -1,7 +1,38 @@
+<script setup lang="ts">
+import { reactive } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
+
+const authStore = useAuthStore()
+const themeStore = useThemeStore()
+
+const form = reactive({
+  name: '',
+  email: '',
+  password: '',
+  password_confirmation: '',
+})
+
+async function handleRegister() {
+  if (form.password !== form.password_confirmation) {
+    authStore.error = 'Паролі не співпадають'
+    return
+  }
+  await authStore.register(form)
+}
+
+function toggleTheme() {
+  themeStore.toggleTheme()
+}
+</script>
+
 <template>
-  <div class="register-container">
-    <div class="register-card">
-      <h1>Реєстрація</h1>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>Spend Track</h1>
+        <p>Створення акаунту</p>
+      </div>
 
       <form @submit.prevent="handleRegister">
         <div class="form-group">
@@ -27,8 +58,20 @@
             v-model="form.password"
             type="password"
             required
-            minlength="6"
-            placeholder="Мінімум 6 символів"
+            placeholder="••••••••"
+            minlength="8"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password_confirmation">Підтвердження паролю</label>
+          <input
+            id="password_confirmation"
+            v-model="form.password_confirmation"
+            type="password"
+            required
+            placeholder="••••••••"
+            minlength="8"
           />
         </div>
 
@@ -36,7 +79,7 @@
           {{ authStore.error }}
         </div>
 
-        <button type="submit" :disabled="authStore.loading">
+        <button type="submit" class="btn-submit" :disabled="authStore.loading">
           {{ authStore.loading ? 'Завантаження...' : 'Зареєструватися' }}
         </button>
       </form>
@@ -44,126 +87,162 @@
       <div class="link-section">
         <p>Вже маєте акаунт? <router-link to="/login">Увійти</router-link></p>
       </div>
+
+      <button @click="toggleTheme" class="theme-toggle-btn">
+        {{ themeStore.theme === 'light' ? '🌙' : '☀️' }}
+      </button>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { reactive } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-
-const form = reactive({
-  name: '',
-  email: '',
-  password: '',
-})
-
-async function handleRegister() {
-  await authStore.register(form)
-}
-</script>
-
 <style scoped>
-.register-container {
+.auth-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-primary);
 }
 
-.register-card {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+.auth-card {
+  background: var(--card-bg);
+  padding: 48px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  border: 1px solid var(--border-color);
+  position: relative;
 }
 
-h1 {
-  margin-bottom: 30px;
+.auth-header {
   text-align: center;
-  color: #333;
-  font-size: 28px;
+  margin-bottom: 40px;
+}
+
+.auth-header h1 {
+  font-size: 32px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.auth-header p {
+  color: var(--text-secondary);
+  font-size: 16px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 label {
   display: block;
   margin-bottom: 8px;
-  color: #555;
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
 }
 
 input {
   width: 100%;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 0.3s;
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s;
   box-sizing: border-box;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary-color);
 }
 
-button {
+.btn-submit {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px;
+  background: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.3s;
+  transition: all 0.2s;
 }
 
-button:hover:not(:disabled) {
-  opacity: 0.9;
+.btn-submit:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
 }
 
-button:disabled {
+.btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
-  padding: 12px;
-  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+  padding: 14px;
+  border-radius: 10px;
   margin-bottom: 20px;
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-size: 14px;
 }
 
 .link-section {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
 }
 
 .link-section p {
-  color: #666;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .link-section a {
-  color: #667eea;
+  color: var(--primary-color);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
+  transition: color 0.2s;
 }
 
 .link-section a:hover {
-  text-decoration: underline;
+  color: var(--primary-hover);
+}
+
+.theme-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--hover-bg);
+  border-radius: 10px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--secondary-bg);
+  transform: scale(1.1);
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 32px 24px;
+  }
+
+  .auth-header h1 {
+    font-size: 28px;
+  }
 }
 </style>
