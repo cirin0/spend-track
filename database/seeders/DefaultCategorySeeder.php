@@ -21,7 +21,10 @@ class DefaultCategorySeeder extends Seeder
         ];
 
         foreach ($categories as $category) {
-            Category::query()->create($category);
+            Category::query()->firstOrCreate(
+                ['slug' => $category['slug'], 'is_default' => $category['is_default']],
+                $category
+            );
         }
     }
 }

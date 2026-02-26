@@ -1,4 +1,24 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: spend-track-frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    networks:
+      - laravel
+    ports:
+      - "5173:5173"
+    depends_on:
+      app:
+        condition: service_started
+
   app:
     build:
       context: .
