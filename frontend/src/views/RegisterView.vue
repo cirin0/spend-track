@@ -10,14 +10,9 @@ const form = reactive({
   name: '',
   email: '',
   password: '',
-  password_confirmation: '',
 })
 
 async function handleRegister() {
-  if (form.password !== form.password_confirmation) {
-    authStore.error = 'Паролі не співпадають'
-    return
-  }
   await authStore.register(form)
 }
 
@@ -56,18 +51,6 @@ function toggleTheme() {
           <input
             id="password"
             v-model="form.password"
-            type="password"
-            required
-            placeholder="••••••••"
-            minlength="8"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="password_confirmation">Підтвердження паролю</label>
-          <input
-            id="password_confirmation"
-            v-model="form.password_confirmation"
             type="password"
             required
             placeholder="••••••••"

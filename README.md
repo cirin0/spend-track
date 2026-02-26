@@ -29,70 +29,39 @@ Spend Track - це додаток для відстеження витрат, п
 
 ---
 
-## Запуск Docker Setup
+## Запуск проєкту
 
-Цей проект використовує Docker Compose для запуску всіх необхідних сервісів: Vue.js фронтенд, Laravel бекенд та PostgreSQL база даних.
-
-### Швидкий старт
-
-Запустіть всі сервіси однією командою:
+### Швидкий запуск (одна команда)
 
 ```bash
-docker-compose up -d
+./setup.sh
 ```
 
-### Доступні порти
+Скрипт автоматично:
+- Створить `.env` файли (якщо їх немає)
+- Запустить Docker контейнери
+- Згенерує APP_KEY
+- Виконає міграції бази даних
 
-Після запуску сервіси будуть доступні за наступними адресами:
+### Після запуску
 
-- **Frontend (Vue.js)**: http://localhost:5173
-- **Backend (Laravel API)**: http://localhost:8000
-- **Database (PostgreSQL)**: localhost:5433
-- **Scrumble Docs**: http://localhost:8000/docs/api
+Проєкт буде доступний за адресами:
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs/api
 
-### Перша побудова
-
-При першому запуску Docker побудує всі образи. Це може зайняти кілька хвилин:
-
-```bash
-docker-compose up --build
-```
-
-### Перебудова образів
-
+### Корисні команди
 
 ```bash
-docker-compose up --build
-```
+# Переглянути логи
+docker-compose logs -f
 
-## Управління сервісами
-
-### Зупинка всіх сервісів
-
-Зупинити контейнери без їх видалення:
-
-```bash
+# Зупинити проєкт
 docker-compose stop
-```
 
-### Запуск зупинених сервісів
+# Запустити знову
+docker-compose up -d
 
-```bash
-docker-compose start
-```
-
-### Виконання команд в контейнері
-
-```bash
-# Відкрити bash в контейнері бекенду
-docker-compose exec app bash
-
-# Виконати artisan команду
-docker-compose exec app php artisan migrate
-
-# Відкрити bash в контейнері фронтенду
-docker-compose exec frontend sh
-
-# Встановити нову npm залежність
-docker-compose exec frontend npm install axios
+# Видалити все (включно з даними БД)
+docker-compose down -v
 ```
