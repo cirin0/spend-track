@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const { marginLeft } = useSidebarMargin()
 
 onMounted(async () => {
@@ -52,6 +54,13 @@ function formatDate(dateString: string) {
             <div class="info-row">
               <span class="label">Зареєстровано:</span>
               <span class="value">{{ formatDate(authStore.user.created_at) }}</span>
+            </div>
+
+            <div class="info-row theme-row">
+              <span class="label">Тема оформлення</span>
+              <button @click="themeStore.toggleTheme()" class="theme-toggle-btn">
+                {{ themeStore.theme === 'light' ? '🌙 Темна' : '☀️ Світла' }}
+              </button>
             </div>
 
             <div class="actions">
@@ -122,6 +131,24 @@ function formatDate(dateString: string) {
   color: var(--text-primary);
   font-weight: 600;
   font-size: 15px;
+}
+
+.theme-toggle-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
 .actions {
