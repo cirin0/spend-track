@@ -158,7 +158,7 @@ export const groupService = {
     categoryId: number,
     data: UpdateGroupCategoryData,
   ): Promise<GroupCategory> {
-    const response = await api.put<GroupCategory>(
+    const response = await api.patch<GroupCategory>(
       `/groups/${groupId}/categories/${categoryId}`,
       data,
     )
@@ -192,7 +192,7 @@ export const groupService = {
     expenseId: number,
     data: UpdateGroupExpenseData,
   ): Promise<GroupExpense> {
-    const response = await api.put<GroupExpense>(`/groups/${groupId}/expenses/${expenseId}`, data)
+    const response = await api.patch<GroupExpense>(`/groups/${groupId}/expenses/${expenseId}`, data)
     return response.data
   },
 
