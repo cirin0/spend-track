@@ -20,7 +20,7 @@ export function useSidebarMargin() {
 
   const marginLeft = computed(() => {
     if (isMobile.value) {
-      return '80px'
+      return '0px'
     }
     return sidebarStore.isCollapsed ? '80px' : '260px'
   })

@@ -78,4 +78,20 @@ body {
 #app {
   min-height: 100vh;
 }
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0 !important;
+    padding-bottom: 64px;
+  }
+
+  .content-wrapper {
+    padding: 20px 16px !important;
+  }
+
+  .modal {
+    width: 95% !important;
+    padding: 20px !important;
+  }
+}
 </style>
