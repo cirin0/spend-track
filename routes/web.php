@@ -2,6 +2,4 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect('/docs/api');
-});
+Route::redirect('/', '/docs/api');
