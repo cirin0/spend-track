@@ -39,9 +39,11 @@ WORKDIR /var/www
 
 COPY composer.json composer.lock ./
 
-RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
+RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress --no-scripts
 
 COPY . .
+
+RUN composer dump-autoload --optimize --no-dev
 
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage \
