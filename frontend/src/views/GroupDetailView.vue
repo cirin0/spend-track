@@ -29,6 +29,8 @@ const isMember = computed(() => {
 const showAddExpenseModal = ref(false)
 const showAddCategoryModal = ref(false)
 const showAddMemberModal = ref(false)
+const showEditCategoryModal = ref(false)
+const showEditExpenseModal = ref(false)
 
 const expenseForm = ref({
   category_id: 0,
@@ -41,6 +43,21 @@ const categoryForm = ref({
   name: '',
   icon: '📁',
   color: '#2563eb',
+})
+
+const editingCategoryId = ref<number | null>(null)
+const editCategoryForm = ref({
+  name: '',
+  icon: '📁',
+  color: '#2563eb',
+})
+
+const editingExpenseId = ref<number | null>(null)
+const editExpenseForm = ref({
+  category_id: 0,
+  amount: 0,
+  date: new Date().toISOString().split('T')[0] as string,
+  description: '',
 })
 
 const memberForm = ref({
@@ -107,9 +124,57 @@ async function deleteCategoryById(categoryId: number) {
   }
 }
 
+function openEditCategory(category: import('@/services/groupService').GroupCategory) {
+  editingCategoryId.value = category.id
+  editCategoryForm.value = {
+    name: category.name,
+    icon: category.icon || '📁',
+    color: category.color || '#2563eb',
+  }
+  showEditCategoryModal.value = true
+}
+
+async function handleEditCategory() {
+  if (!editingCategoryId.value) return
+  const result = await groupStore.updateCategory(groupId.value, editingCategoryId.value, {
+    name: editCategoryForm.value.name,
+    icon: editCategoryForm.value.icon,
+    color: editCategoryForm.value.color,
+  })
+  if (result) {
+    showEditCategoryModal.value = false
+    editingCategoryId.value = null
+  }
+}
+
 async function deleteExpenseById(expenseId: number) {
   if (confirm('Ви впевнені, що хочете видалити цю витрату?')) {
     await groupStore.deleteExpense(groupId.value, expenseId)
+  }
+}
+
+function openEditExpense(expense: GroupExpense) {
+  editingExpenseId.value = expense.id
+  editExpenseForm.value = {
+    category_id: expense.category_id,
+    amount: typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount,
+    date: expense.date,
+    description: expense.description || '',
+  }
+  showEditExpenseModal.value = true
+}
+
+async function handleEditExpense() {
+  if (!editingExpenseId.value) return
+  const result = await groupStore.updateExpense(groupId.value, editingExpenseId.value, {
+    category_id: editExpenseForm.value.category_id,
+    amount: editExpenseForm.value.amount,
+    date: editExpenseForm.value.date,
+    description: editExpenseForm.value.description,
+  })
+  if (result) {
+    showEditExpenseModal.value = false
+    editingExpenseId.value = null
   }
 }
 
@@ -156,8 +221,6 @@ function formatDate(dateString: string): string {
         <PageHeader
           :title="groupStore.currentGroup?.name || 'Група'"
           :subtitle="groupStore.currentGroup?.description || undefined"
-          :icon="groupStore.currentGroup?.icon || undefined"
-          :icon-color="groupStore.currentGroup?.color || undefined"
           back-to="/groups"
         >
           <template #actions>
@@ -234,6 +297,7 @@ function formatDate(dateString: string): string {
                   <div class="expense-meta">{{ expense.user.name }}</div>
                 </div>
                 <div v-if="canEditExpense(expense)" class="expense-actions">
+                  <button @click="openEditExpense(expense)" class="btn-icon edit">✏️</button>
                   <button @click="deleteExpenseById(expense.id)" class="btn-icon delete">🗑️</button>
                 </div>
               </div>
@@ -270,6 +334,7 @@ function formatDate(dateString: string): string {
                 </div>
                 <div class="category-name">{{ category.name }}</div>
                 <div v-if="isOwner" class="category-actions">
+                  <button @click="openEditCategory(category)" class="btn-icon edit">✏️</button>
                   <button @click="deleteCategoryById(category.id)" class="btn-icon delete">
                     🗑️
                   </button>
@@ -420,6 +485,86 @@ function formatDate(dateString: string): string {
               Скасувати
             </button>
             <button type="submit" class="btn-primary">Додати</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      v-if="showEditCategoryModal"
+      class="modal-overlay"
+      @click.self="showEditCategoryModal = false"
+    >
+      <div class="modal">
+        <h3>Редагувати категорію</h3>
+        <form @submit.prevent="handleEditCategory">
+          <div class="form-group">
+            <label>Назва</label>
+            <input v-model="editCategoryForm.name" type="text" required class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Іконка</label>
+            <input
+              v-model="editCategoryForm.icon"
+              type="text"
+              placeholder="📁"
+              class="form-control"
+            />
+          </div>
+          <div class="form-group">
+            <label>Колір</label>
+            <input v-model="editCategoryForm.color" type="color" class="form-control" />
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showEditCategoryModal = false" class="btn-secondary">
+              Скасувати
+            </button>
+            <button type="submit" class="btn-primary">Зберегти</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      v-if="showEditExpenseModal"
+      class="modal-overlay"
+      @click.self="showEditExpenseModal = false"
+    >
+      <div class="modal">
+        <h3>Редагувати витрату</h3>
+        <form @submit.prevent="handleEditExpense">
+          <div class="form-group">
+            <label>Категорія</label>
+            <select v-model="editExpenseForm.category_id" required class="form-control">
+              <option value="">Виберіть категорію</option>
+              <option v-for="cat in groupStore.categories" :key="cat.id" :value="cat.id">
+                {{ cat.icon }} {{ cat.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Сума</label>
+            <input
+              v-model.number="editExpenseForm.amount"
+              type="number"
+              step="0.01"
+              required
+              class="form-control"
+            />
+          </div>
+          <div class="form-group">
+            <label>Дата</label>
+            <input v-model="editExpenseForm.date" type="date" required class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Опис</label>
+            <textarea v-model="editExpenseForm.description" class="form-control"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showEditExpenseModal = false" class="btn-secondary">
+              Скасувати
+            </button>
+            <button type="submit" class="btn-primary">Зберегти</button>
           </div>
         </form>
       </div>
@@ -639,6 +784,15 @@ function formatDate(dateString: string): string {
 
 .expense-actions {
   flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .expense-item {
+    flex-direction: column;
+    align-items: normal;
+  }
 }
 
 .btn-icon {
@@ -654,6 +808,18 @@ function formatDate(dateString: string): string {
 
 .btn-icon.delete:hover {
   background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-icon.edit:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.category-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
 }
 
 .categories-grid {
@@ -694,12 +860,6 @@ function formatDate(dateString: string): string {
   font-weight: 600;
   color: var(--text-primary);
   text-align: center;
-}
-
-.category-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
 }
 
 .members-list {
@@ -850,7 +1010,7 @@ function formatDate(dateString: string): string {
   }
 
   .tabs {
-    overflow-x: auto;
+    gap: 0px;
   }
 
   .tab {

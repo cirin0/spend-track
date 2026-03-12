@@ -1,24 +1,10 @@
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/auth'
-import { useThemeStore } from '@/stores/theme'
 import { useSidebarStore } from '@/stores/sidebar'
 
-const authStore = useAuthStore()
-const themeStore = useThemeStore()
 const sidebarStore = useSidebarStore()
 
 function toggleSidebar() {
   sidebarStore.toggle()
-}
-
-function toggleTheme() {
-  themeStore.toggleTheme()
-}
-
-function handleLogout() {
-  if (confirm('Ви впевнені, що хочете вийти?')) {
-    authStore.logout()
-  }
 }
 </script>
 
@@ -59,22 +45,10 @@ function handleLogout() {
     </nav>
 
     <div class="sidebar-footer">
-      <button @click="toggleTheme" class="nav-item theme-toggle">
-        <span class="nav-icon">{{ themeStore.theme === 'light' ? '🌙' : '☀️' }}</span>
-        <span v-if="!sidebarStore.isCollapsed" class="nav-text">
-          {{ themeStore.theme === 'light' ? 'Темна' : 'Світла' }}
-        </span>
-      </button>
-
       <router-link to="/profile" class="nav-item" active-class="active">
         <span class="nav-icon">👤</span>
         <span v-if="!sidebarStore.isCollapsed" class="nav-text">Профіль</span>
       </router-link>
-
-      <button @click="handleLogout" class="nav-item logout">
-        <span class="nav-icon">🚪</span>
-        <span v-if="!sidebarStore.isCollapsed" class="nav-text">Вийти</span>
-      </button>
     </div>
   </aside>
 </template>
@@ -95,7 +69,7 @@ function handleLogout() {
 }
 
 .app-sidebar.collapsed {
-  width: 90px;
+  width: 80px;
   align-items: center;
 }
 
@@ -160,7 +134,7 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 30px;
+  padding: 12px 28px;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s;
@@ -201,25 +175,76 @@ function handleLogout() {
   white-space: nowrap;
 }
 
-.theme-toggle {
-  margin-bottom: 8px;
-}
-
 @media (max-width: 768px) {
   .app-sidebar {
-    width: 80px;
+    width: 100%;
+    height: 64px;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--border-color);
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    display: none;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0;
+  }
+
+  .sidebar-footer {
+    flex-direction: row;
+    border-top: none;
+    padding: 0;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .nav-item {
+    flex-direction: column;
+    padding: 6px 4px;
+    gap: 2px;
+    justify-content: center;
+    align-items: center;
+    width: auto;
+    min-width: 44px;
+    font-size: 10px;
+  }
+
+  .nav-item.active {
+    background: transparent;
+    color: var(--primary-color);
+  }
+
+  .nav-item.active .nav-icon {
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 8px;
+    padding: 4px 8px;
   }
 
   .nav-text {
-    display: none;
+    display: block;
+    font-size: 10px;
+    line-height: 1;
   }
 
-  .logo {
-    display: none;
+  .nav-icon {
+    font-size: 20px;
   }
 
-  .toggle-btn {
-    display: none;
+  .theme-toggle {
+    margin-bottom: 0;
   }
 }
 </style>
