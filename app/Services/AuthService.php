@@ -30,4 +30,23 @@ class AuthService
             'password' => $password,
         ]);
     }
+
+    public function updateProfile(User $user, array $data, $avatarFile = null): User
+    {
+        if ($avatarFile) {
+            // Видалити старий аватар якщо існує
+            if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
+                \Storage::disk('public')->delete($user->avatar);
+            }
+
+            // Зберегти новий аватар
+            $path = $avatarFile->store('avatars', 'public');
+            $data['avatar'] = $path;
+        }
+
+        $user->update($data);
+
+        return $user->fresh();
+    }
+
 }
