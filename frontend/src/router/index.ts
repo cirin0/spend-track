@@ -97,13 +97,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/groups/:id',
+      path: '/groups/:slug',
       name: 'group-detail',
       component: () => import('../views/GroupDetailView.vue'),
       meta: { requiresAuth: true },
     },
     {
-      path: '/groups/:id/edit',
+      path: '/groups/:slug/edit',
       name: 'group-edit',
       component: () => import('../views/GroupFormView.vue'),
       meta: { requiresAuth: true },

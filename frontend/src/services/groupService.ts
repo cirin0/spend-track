@@ -11,6 +11,7 @@ export interface GroupMember {
 export interface Group {
   id: number
   name: string
+  slug: string
   description: string | null
   icon: string | null
   color: string | null
@@ -110,6 +111,11 @@ export const groupService = {
 
   async getById(id: number): Promise<Group> {
     const response = await api.get<Group>(`/groups/${id}`)
+    return response.data
+  },
+
+  async getBySlug(slug: string): Promise<Group> {
+    const response = await api.get<Group>(`/groups/${slug}`)
     return response.data
   },
 
