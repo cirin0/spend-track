@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthService
@@ -34,13 +35,11 @@ class AuthService
     public function updateProfile(User $user, array $data, $avatarFile = null): User
     {
         if ($avatarFile) {
-            // Видалити старий аватар якщо існує
-            if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
-                \Storage::disk('public')->delete($user->avatar);
+            if ($user->avatar && Storage::disk('r2')->exists($user->avatar)) {
+                Storage::disk('r2')->delete($user->avatar);
             }
 
-            // Зберегти новий аватар
-            $path = $avatarFile->store('avatars', 'public');
+            $path = $avatarFile->store('avatars', 'r2');
             $data['avatar'] = $path;
         }
 
