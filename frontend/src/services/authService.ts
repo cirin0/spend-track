@@ -4,6 +4,7 @@ export interface User {
   id: number
   name: string
   email: string
+  avatar?: string | null
   email_verified_at?: string | null
   created_at: string
   updated_at: string
@@ -31,6 +32,12 @@ export interface RegisterResponse {
   user: User
 }
 
+export interface UpdateProfileData {
+  name?: string
+  email?: string
+  avatar?: File
+}
+
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/login', credentials)
@@ -49,6 +56,21 @@ export const authService = {
 
   async logout(): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>('/auth/logout')
+    return response.data
+  },
+
+  async updateProfile(data: UpdateProfileData): Promise<{ message: string; user: User }> {
+    const formData = new FormData()
+
+    if (data.name) formData.append('name', data.name)
+    if (data.email) formData.append('email', data.email)
+    if (data.avatar) formData.append('avatar', data.avatar)
+
+    const response = await api.post<{ message: string; user: User }>('/auth/profile', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
     return response.data
   },
 }

@@ -5,6 +5,7 @@ import {
   type User,
   type LoginCredentials,
   type RegisterData,
+  type UpdateProfileData,
 } from '@/services/authService'
 import { useRouter } from 'vue-router'
 
@@ -115,6 +116,25 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
   }
 
+  async function updateProfile(data: UpdateProfileData) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await authService.updateProfile(data)
+      user.value = response.user
+      localStorage.setItem('user', JSON.stringify(response.user))
+      return { success: true, message: response.message }
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      error.value = axiosError.response?.data?.message || 'Помилка оновлення профілю'
+      console.error('Update profile error:', err)
+      return { success: false, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     user,
     token,
@@ -127,5 +147,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     logout,
     clearAuth,
+    updateProfile,
   }
 })
