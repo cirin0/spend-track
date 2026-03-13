@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useGroupStore } from '@/stores/group'
 import { useAuthStore } from '@/stores/auth'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import { userService, type User } from '@/services/userService'
 import type { GroupExpense } from '@/services/groupService'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
@@ -14,7 +15,12 @@ const groupStore = useGroupStore()
 const authStore = useAuthStore()
 const { marginLeft } = useSidebarMargin()
 
-const groupId = computed(() => Number(route.params.id))
+const groupId = computed(() => {
+  const param = route.params.slug || route.params.id
+  if (!param) return ''
+  return typeof param === 'string' ? param : String(param[0])
+})
+const isSlug = computed(() => isNaN(Number(groupId.value)))
 const loading = ref(false)
 const activeTab = ref<'expenses' | 'categories' | 'members'>('expenses')
 
@@ -60,20 +66,110 @@ const editExpenseForm = ref({
   description: '',
 })
 
-const memberForm = ref({
-  user_id: 0,
-})
+const searchQuery = ref('')
+const searchResults = ref<User[]>([])
+const searchLoading = ref(false)
+const selectedUser = ref<User | null>(null)
+const addMemberError = ref('')
+
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+async function searchUsers() {
+  if (searchQuery.value.length < 2) {
+    searchResults.value = []
+    return
+  }
+
+  searchLoading.value = true
+  try {
+    searchResults.value = await userService.search(searchQuery.value)
+  } catch (error) {
+    console.error('Search error:', error)
+    searchResults.value = []
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+function handleSearchInput() {
+  // Очищаємо попередній таймер
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+
+  // Якщо менше 2 символів - очищаємо результати одразу
+  if (searchQuery.value.length < 2) {
+    searchResults.value = []
+    searchLoading.value = false
+    return
+  }
+
+  // Показуємо індикатор завантаження
+  searchLoading.value = true
+
+  // Встановлюємо новий таймер на 500ms
+  searchTimeout = setTimeout(() => {
+    searchUsers()
+  }, 500)
+}
+
+function selectUser(user: User) {
+  // Перевіряємо чи користувач вже в групі
+  if (isUserInGroup(user.id)) {
+    addMemberError.value = `${user.name} вже є учасником цієї групи`
+    return
+  }
+
+  selectedUser.value = user
+  // Не заповнюємо інпут, просто очищаємо результати
+  searchQuery.value = ''
+  searchResults.value = []
+  addMemberError.value = ''
+  searchLoading.value = false
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  searchResults.value = []
+  selectedUser.value = null
+  addMemberError.value = ''
+  searchLoading.value = false
+  // Очищаємо таймер
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+    searchTimeout = null
+  }
+}
+
+function clearSelectedUser() {
+  selectedUser.value = null
+  addMemberError.value = ''
+}
+
+function isUserInGroup(userId: number): boolean {
+  return groupStore.currentGroup?.members?.some((m) => m.id === userId) || false
+}
 
 onMounted(async () => {
   loading.value = true
-  await groupStore.fetchGroupById(groupId.value)
-  await groupStore.fetchCategories(groupId.value)
-  await groupStore.fetchExpenses(groupId.value)
+  if (isSlug.value) {
+    await groupStore.fetchGroupBySlug(groupId.value)
+  } else {
+    await groupStore.fetchGroupById(Number(groupId.value))
+  }
+  const numericId = groupStore.currentGroup?.id
+  if (numericId) {
+    await groupStore.fetchCategories(numericId)
+    await groupStore.fetchExpenses(numericId)
+  }
   loading.value = false
 })
 
 async function handleAddExpense() {
-  const result = await groupStore.createExpense(groupId.value, {
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId) return
+
+  const result = await groupStore.createExpense(numericId, {
     category_id: expenseForm.value.category_id,
     amount: expenseForm.value.amount,
     date: expenseForm.value.date,
@@ -92,7 +188,10 @@ async function handleAddExpense() {
 }
 
 async function handleAddCategory() {
-  const result = await groupStore.createCategory(groupId.value, {
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId) return
+
+  const result = await groupStore.createCategory(numericId, {
     name: categoryForm.value.name,
     icon: categoryForm.value.icon,
     color: categoryForm.value.color,
@@ -109,18 +208,59 @@ async function handleAddCategory() {
 }
 
 async function handleAddMember() {
-  const success = await groupStore.addMember(groupId.value, memberForm.value.user_id)
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId || !selectedUser.value) return
+
+  addMemberError.value = ''
+  const success = await groupStore.addMember(numericId, selectedUser.value.id)
 
   if (success) {
     showAddMemberModal.value = false
-    memberForm.value = { user_id: 0 }
-    await groupStore.fetchGroupById(groupId.value)
+    clearSearch()
+    await groupStore.fetchGroupById(numericId)
+  } else {
+    // Показуємо помилку на формі
+    if (groupStore.error) {
+      // Перевіряємо різні типи помилок
+      const errorLower = groupStore.error.toLowerCase()
+      if (errorLower.includes('already') || errorLower.includes('вже є')) {
+        addMemberError.value = `${selectedUser.value.name} вже є учасником цієї групи`
+      } else if (errorLower.includes('not found') || errorLower.includes('не знайдено')) {
+        addMemberError.value = 'Користувача не знайдено'
+      } else if (errorLower.includes('only owner') || errorLower.includes('тільки власник')) {
+        addMemberError.value = 'Тільки власник може додавати учасників'
+      } else {
+        addMemberError.value = groupStore.error
+      }
+    } else {
+      addMemberError.value = 'Не вдалося додати учасника. Спробуйте ще раз'
+    }
+  }
+}
+
+function openAddMemberModal() {
+  clearSearch()
+  addMemberError.value = ''
+  showAddMemberModal.value = true
+}
+
+function closeAddMemberModal() {
+  showAddMemberModal.value = false
+  clearSearch()
+  addMemberError.value = ''
+  // Очищаємо таймер при закритті
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+    searchTimeout = null
   }
 }
 
 async function deleteCategoryById(categoryId: number) {
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId) return
+
   if (confirm('Ви впевнені, що хочете видалити цю категорію?')) {
-    await groupStore.deleteCategory(groupId.value, categoryId)
+    await groupStore.deleteCategory(numericId, categoryId)
   }
 }
 
@@ -135,8 +275,9 @@ function openEditCategory(category: import('@/services/groupService').GroupCateg
 }
 
 async function handleEditCategory() {
-  if (!editingCategoryId.value) return
-  const result = await groupStore.updateCategory(groupId.value, editingCategoryId.value, {
+  const numericId = groupStore.currentGroup?.id
+  if (!editingCategoryId.value || !numericId) return
+  const result = await groupStore.updateCategory(numericId, editingCategoryId.value, {
     name: editCategoryForm.value.name,
     icon: editCategoryForm.value.icon,
     color: editCategoryForm.value.color,
@@ -148,8 +289,11 @@ async function handleEditCategory() {
 }
 
 async function deleteExpenseById(expenseId: number) {
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId) return
+
   if (confirm('Ви впевнені, що хочете видалити цю витрату?')) {
-    await groupStore.deleteExpense(groupId.value, expenseId)
+    await groupStore.deleteExpense(numericId, expenseId)
   }
 }
 
@@ -165,8 +309,9 @@ function openEditExpense(expense: GroupExpense) {
 }
 
 async function handleEditExpense() {
-  if (!editingExpenseId.value) return
-  const result = await groupStore.updateExpense(groupId.value, editingExpenseId.value, {
+  const numericId = groupStore.currentGroup?.id
+  if (!editingExpenseId.value || !numericId) return
+  const result = await groupStore.updateExpense(numericId, editingExpenseId.value, {
     category_id: editExpenseForm.value.category_id,
     amount: editExpenseForm.value.amount,
     date: editExpenseForm.value.date,
@@ -179,15 +324,21 @@ async function handleEditExpense() {
 }
 
 async function removeMemberById(userId: number) {
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId) return
+
   if (confirm('Ви впевнені, що хочете видалити цього учасника?')) {
-    await groupStore.removeMember(groupId.value, userId)
-    await groupStore.fetchGroupById(groupId.value)
+    await groupStore.removeMember(numericId, userId)
+    await groupStore.fetchGroupById(numericId)
   }
 }
 
 async function handleLeave() {
+  const numericId = groupStore.currentGroup?.id
+  if (!numericId) return
+
   if (confirm('Ви впевнені, що хочете вийти з групи?')) {
-    const success = await groupStore.leaveGroup(groupId.value)
+    const success = await groupStore.leaveGroup(numericId)
     if (success) {
       router.push('/groups')
     }
@@ -226,7 +377,7 @@ function formatDate(dateString: string): string {
           <template #actions>
             <button
               v-if="isOwner"
-              @click="router.push(`/groups/${groupId}/edit`)"
+              @click="router.push(`/groups/${groupStore.currentGroup?.slug}/edit`)"
               class="btn-secondary"
             >
               ✏️ Редагувати
@@ -350,7 +501,7 @@ function formatDate(dateString: string): string {
           <div v-if="activeTab === 'members'" class="tab-content">
             <div class="tab-header">
               <h3>Учасники групи</h3>
-              <button v-if="isOwner" @click="showAddMemberModal = true" class="btn-primary">
+              <button v-if="isOwner" @click="openAddMemberModal" class="btn-primary">
                 + Додати учасника
               </button>
             </div>
@@ -454,7 +605,21 @@ function formatDate(dateString: string): string {
           </div>
           <div class="form-group">
             <label>Колір</label>
-            <input v-model="categoryForm.color" type="color" class="form-control" />
+            <div class="color-input-group">
+              <input
+                v-model="categoryForm.color"
+                type="color"
+                class="color-picker-input"
+              />
+              <input
+                v-model="categoryForm.color"
+                type="text"
+                class="form-control color-text-input"
+                placeholder="#2563eb"
+                pattern="^#[0-9A-Fa-f]{6}$"
+                maxlength="7"
+              />
+            </div>
           </div>
           <div class="modal-actions">
             <button type="button" @click="showAddCategoryModal = false" class="btn-secondary">
@@ -466,25 +631,89 @@ function formatDate(dateString: string): string {
       </div>
     </div>
 
-    <div v-if="showAddMemberModal" class="modal-overlay" @click.self="showAddMemberModal = false">
+    <div v-if="showAddMemberModal" class="modal-overlay" @click.self="closeAddMemberModal">
       <div class="modal">
         <h3>Додати учасника</h3>
         <form @submit.prevent="handleAddMember">
           <div class="form-group">
-            <label>ID користувача</label>
-            <input
-              v-model.number="memberForm.user_id"
-              type="number"
-              required
-              class="form-control"
-              placeholder="Введіть ID користувача"
-            />
+            <label>Пошук користувача</label>
+
+            <div v-if="!selectedUser">
+              <div class="search-container">
+                <input
+                  v-model="searchQuery"
+                  @input="handleSearchInput"
+                  type="text"
+                  class="form-control"
+                  placeholder="Введіть ім'я або email (мінімум 2 символи)"
+                  autocomplete="off"
+                />
+                <button
+                  v-if="searchQuery"
+                  type="button"
+                  @click="clearSearch"
+                  class="clear-search-btn"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div v-if="searchLoading" class="search-loading">Пошук...</div>
+
+              <div v-if="searchResults.length > 0" class="search-results">
+                <div
+                  v-for="user in searchResults"
+                  :key="user.id"
+                  class="search-result-item"
+                  :class="{ 'already-member': isUserInGroup(user.id) }"
+                  @click="selectUser(user)"
+                >
+                  <div class="user-avatar-small">{{ user.name.charAt(0).toUpperCase() }}</div>
+                  <div class="user-info-small">
+                    <div class="user-name-small">
+                      {{ user.name }}
+                      <span v-if="isUserInGroup(user.id)" class="member-badge">Вже в групі</span>
+                    </div>
+                    <div class="user-email-small">{{ user.email }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-if="!searchLoading && searchQuery.length >= 2 && searchResults.length === 0"
+                class="no-results"
+              >
+                Користувачів не знайдено
+              </div>
+            </div>
+
+            <div v-if="selectedUser" class="selected-user">
+              <div class="selected-user-label">Вибраний користувач:</div>
+              <div class="selected-user-badge">
+                <div class="user-avatar-small">
+                  {{ selectedUser.name.charAt(0).toUpperCase() }}
+                </div>
+                <div class="user-info-small">
+                  <div class="user-name-small">{{ selectedUser.name }}</div>
+                  <div class="user-email-small">{{ selectedUser.email }}</div>
+                </div>
+                <button
+                  type="button"
+                  @click="clearSelectedUser"
+                  class="remove-selected-btn"
+                  title="Видалити вибір"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
           </div>
+
           <div class="modal-actions">
-            <button type="button" @click="showAddMemberModal = false" class="btn-secondary">
+            <button type="button" @click="closeAddMemberModal" class="btn-secondary">
               Скасувати
             </button>
-            <button type="submit" class="btn-primary">Додати</button>
+            <button type="submit" class="btn-primary" :disabled="!selectedUser">Додати</button>
           </div>
         </form>
       </div>
@@ -513,7 +742,21 @@ function formatDate(dateString: string): string {
           </div>
           <div class="form-group">
             <label>Колір</label>
-            <input v-model="editCategoryForm.color" type="color" class="form-control" />
+            <div class="color-input-group">
+              <input
+                v-model="editCategoryForm.color"
+                type="color"
+                class="color-picker-input"
+              />
+              <input
+                v-model="editCategoryForm.color"
+                type="text"
+                class="form-control color-text-input"
+                placeholder="#2563eb"
+                pattern="^#[0-9A-Fa-f]{6}$"
+                maxlength="7"
+              />
+            </div>
           </div>
           <div class="modal-actions">
             <button type="button" @click="showEditCategoryModal = false" class="btn-secondary">
@@ -602,8 +845,13 @@ function formatDate(dateString: string): string {
   border: 1px solid var(--border-color);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: var(--hover-bg);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-danger {
@@ -707,9 +955,15 @@ function formatDate(dateString: string): string {
   transition: all 0.2s;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--primary-color);
 }
 
 .expenses-list {
@@ -998,6 +1252,190 @@ function formatDate(dateString: string): string {
 
 .modal-actions button {
   flex: 1;
+}
+
+.color-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.color-picker-input {
+  width: 60px;
+  height: 48px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  background: var(--input-bg);
+  flex-shrink: 0;
+}
+
+.color-picker-input:hover {
+  border-color: var(--primary-color);
+}
+
+.color-text-input {
+  flex: 1;
+}
+
+.search-container {
+  position: relative;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.clear-search-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.search-loading {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.search-results {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: var(--hover-bg);
+}
+
+.search-result-item.already-member {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.search-result-item.already-member:hover {
+  background: transparent;
+}
+
+.member-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary-color);
+  border-radius: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.user-avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-info-small {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name-small {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.user-email-small {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-results {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.selected-user {
+  margin-top: 12px;
+}
+
+.selected-user-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.selected-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 8px;
+  position: relative;
+}
+
+.remove-selected-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.remove-selected-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger-color);
 }
 
 @media (max-width: 768px) {

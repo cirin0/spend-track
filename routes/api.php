@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\GroupCategoryController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\GroupExpenseController;
+use App\Http\Controllers\Api\UserController;
 
 Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::post('login', 'login');
@@ -15,6 +16,7 @@ Route::prefix('auth')->controller(AuthController::class)->group(function () {
     Route::middleware('auth:api')->group(function () {
         Route::get('me', 'me');
         Route::post('logout', 'logout');
+        Route::post('profile', 'updateProfile');
     });
 });
 
@@ -50,10 +52,15 @@ Route::middleware('auth:api')->group(function () {
 });
 
 Route::middleware('auth:api')->group(function () {
+    Route::get('/users/search', [UserController::class, 'search']);
+});
+
+Route::middleware('auth:api')->group(function () {
     Route::prefix('groups')->group(function () {
         Route::get('/', [GroupController::class, 'index']);
         Route::post('/', [GroupController::class, 'store']);
-        Route::get('/{id}', [GroupController::class, 'show']);
+        Route::get('/{id}', [GroupController::class, 'show'])->where(['id' => '[0-9]+']);
+        Route::get('/{slug}', [GroupController::class, 'showBySlug'])->where(['slug' => '[a-z0-9-]+']);
         Route::patch('/{id}', [GroupController::class, 'update']);
         Route::delete('/{id}', [GroupController::class, 'destroy']);
         Route::post('/{id}/members', [GroupController::class, 'addMember']);
