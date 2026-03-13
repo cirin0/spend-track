@@ -11,8 +11,12 @@ const route = useRoute()
 const groupStore = useGroupStore()
 const { marginLeft } = useSidebarMargin()
 
-const isEdit = computed(() => !!route.params.id)
-const groupId = computed(() => (route.params.id ? Number(route.params.id) : null))
+const isEdit = computed(() => !!route.params.slug || !!route.params.id)
+const groupId = computed(() => {
+  const param = route.params.slug || route.params.id
+  return param ? (typeof param === 'string' ? param : String(param[0])) : null
+})
+const isSlug = computed(() => groupId.value ? isNaN(Number(groupId.value)) : false)
 
 const formLoading = ref(false)
 
@@ -34,7 +38,13 @@ onMounted(async () => {
 async function loadGroupData() {
   if (!groupId.value) return
 
-  const success = await groupStore.fetchGroupById(groupId.value)
+  let success = false
+  if (isSlug.value) {
+    success = await groupStore.fetchGroupBySlug(groupId.value)
+  } else {
+    success = await groupStore.fetchGroupById(Number(groupId.value))
+  }
+
   if (success && groupStore.currentGroup) {
     form.value = {
       name: groupStore.currentGroup.name,
@@ -66,8 +76,8 @@ async function handleSubmit() {
 
     let result = null
 
-    if (isEdit.value && groupId.value) {
-      result = await groupStore.updateGroup(groupId.value, data)
+    if (isEdit.value && groupStore.currentGroup) {
+      result = await groupStore.updateGroup(groupStore.currentGroup.id, data)
     } else {
       result = await groupStore.createGroup(data)
     }

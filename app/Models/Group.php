@@ -11,6 +11,7 @@ class Group extends Model
     protected $fillable = [
         'owner_id',
         'name',
+        'slug',
         'description',
         'icon',
         'color',
@@ -51,5 +52,22 @@ class Group extends Model
     public function isOwner(int $userId): bool
     {
         return $this->owner_id === $userId;
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($group) {
+            if (empty($group->slug)) {
+                $group->slug = self::createOriginalSlug($group->name, self::class);
+            }
+        });
+
+        static::updating(function ($group) {
+            if ($group->isDirty('name')) {
+                $group->slug = self::createOriginalSlug($group->name, self::class);
+            }
+        });
     }
 }

@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Traits\SlugGenerationTrait;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Group\InviteMemberRequest;
 use App\Http\Requests\Group\StoreGroupRequest;
 use App\Http\Requests\Group\UpdateGroupRequest;
 use App\Http\Resources\GroupResource;
 use App\Services\GroupService;
+use App\Models\Group;
 use Exception;
 use Illuminate\Http\JsonResponse;
 
 class GroupController extends Controller
 {
+    use SlugGenerationTrait;
+
     public function __construct(protected GroupService $groupService)
     {
     }
@@ -28,9 +32,12 @@ class GroupController extends Controller
 
     public function store(StoreGroupRequest $request): JsonResponse
     {
+        $slug = self::createOriginalSlug($request->name, Group::class);
+
+
         $group = $this->groupService->createGroup(
             auth()->id(),
-            $request->validated()
+            $request->validated()+ ['slug' => $slug]
         );
 
         return response()->json(new GroupResource($group), 201);
@@ -47,6 +54,18 @@ class GroupController extends Controller
 
         return response()->json(new GroupResource($group));
     }
+
+    public function showBySlug(string $slug): JsonResponse
+    {
+        $group = $this->groupService->getGroupBySlug($slug, auth()->id());
+
+        if (!$group) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        return response()->json(new GroupResource($group));
+    }
+
 
     public function update(UpdateGroupRequest $request, int $id): JsonResponse
     {

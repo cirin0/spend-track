@@ -24,11 +24,20 @@ class GroupService
         })->with(['owner', 'members',])->find($groupId);
     }
 
+    public function getGroupBySlug(string $slug, int $userId): ?Group
+    {
+        return Group::query()->where('slug', $slug)->whereHas('members', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->with(['owner', 'members'])->first();
+    }
+
+
     public function createGroup(int $userId, array $data): Group
     {
         $group = Group::query()->create([
             'owner_id' => $userId,
             'name' => $data['name'],
+            'slug' => $data['slug'],
             'description' => $data['description'] ?? null,
             'icon' => $data['icon'] ?? null,
             'color' => $data['color'] ?? null,
@@ -72,16 +81,16 @@ class GroupService
         $group = Group::query()->find($groupId);
 
         if (!$group || !$group->isOwner($requesterId)) {
-            throw new Exception('Only owner can add members');
+            throw new Exception('Тільки власник може додавати учасників');
         }
 
         if ($group->isMember($userIdToAdd)) {
-            throw new Exception('User is already a member');
+            throw new Exception('Користувач вже є учасником групи');
         }
 
         $user = User::find($userIdToAdd);
         if (!$user) {
-            throw new Exception('User not found');
+            throw new Exception('Користувача не знайдено');
         }
 
         return GroupMember::query()->create([
