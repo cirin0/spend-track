@@ -51,4 +51,4 @@ RUN chown -R www-data:www-data /var/www \
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "php artisan migrate --force && if [ \"${RUN_SEEDER:-false}\" = \"true\" ]; then php artisan db:seed --force; fi && php artisan config:cache && php artisan route:cache && php artisan event:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+CMD ["sh", "-c", "php artisan migrate --force && if [ \"${RUN_SEEDER:-false}\" = \"true\" ]; then php artisan db:seed --force; fi && php artisan storage:link --force && php artisan config:cache && php artisan route:cache && php artisan event:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
