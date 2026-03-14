@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Expense\ExpenseIndexRequest;
 use App\Http\Requests\Expense\StoreExpenseRequest;
 use App\Http\Requests\Expense\UpdateExpenseRequest;
 use App\Http\Resources\ExpenseResource;
@@ -16,12 +17,13 @@ class ExpenseController extends Controller
     {
     }
 
-    public function index(Request $request)
+    public function index(ExpenseIndexRequest $request)
     {
         $expenses = $this->expenseService->getAllExpenses(
             auth()->id(),
-            $request->query('start_date'),
-            $request->query('end_date')
+            $request->fromDate(),
+            $request->toDate(),
+            $request->categoryId()
         );
 
         return response()->json([

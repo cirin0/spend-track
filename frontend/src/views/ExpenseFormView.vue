@@ -85,7 +85,7 @@ async function handleSubmit(data: CreateExpenseData) {
     } else if (axiosError.response?.data?.message) {
       toast.error(axiosError.response.data.message)
     } else if (axiosError.message === 'Network Error') {
-      toast.error('Помилка мережі. Перевірте з\'єднання з інтернетом.')
+      toast.error("Помилка мережі. Перевірте з'єднання з інтернетом.")
     } else {
       toast.error(isEdit.value ? 'Не вдалося оновити витрату' : 'Не вдалося створити витрату')
     }

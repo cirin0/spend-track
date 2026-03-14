@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useExpenseStore } from '@/stores/expense'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import { useCurrency } from '@/composables/useCurrency'
+import { categoryService, type Category } from '@/services/categoryService'
+import { calculatePeriodDates } from '@/services/analyticsService'
 import type { Expense } from '@/services/expenseService'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
@@ -18,10 +20,38 @@ const { fetchRates, getRate } = useCurrency()
 const showDetailModal = ref(false)
 const selectedExpense = ref<Expense | null>(null)
 const selectedCurrency = ref<'UAH' | 'USD' | 'EUR'>('UAH')
+const categories = ref<Map<number, Category>>(new Map())
+const defaultRange = calculatePeriodDates('month')
+const filters = ref({
+  from: defaultRange.from,
+  to: defaultRange.to,
+  category: '',
+})
 
 const totalConverted = computed(() => {
   return expenseStore.expenses.reduce((sum, exp) => sum + (exp.converted_amount || exp.amount), 0)
 })
+
+const categoryOptions = computed(() => {
+  return Array.from(categories.value.values()).sort((left, right) =>
+    left.name.localeCompare(right.name, 'uk'),
+  )
+})
+
+const selectedCategoryId = computed(() => {
+  if (!filters.value.category) {
+    return undefined
+  }
+
+  const categoryId = Number(filters.value.category)
+  return Number.isNaN(categoryId) ? undefined : categoryId
+})
+
+const expenseFilters = computed(() => ({
+  from: filters.value.from || undefined,
+  to: filters.value.to || undefined,
+  category: selectedCategoryId.value,
+}))
 
 function cycleCurrency() {
   const currencies: Array<'UAH' | 'USD' | 'EUR'> = ['UAH', 'USD', 'EUR']
@@ -60,8 +90,50 @@ const currentRate = computed(() => {
 
 onMounted(async () => {
   await fetchRates()
-  await expenseStore.fetchExpenses()
+  await loadCategories()
+  await loadExpenses()
 })
+
+async function loadCategories() {
+  try {
+    const response = await categoryService.getAll()
+    const allCategories = [...response.default, ...response.user]
+    categories.value = new Map()
+    allCategories.forEach((category) => {
+      categories.value.set(category.id, category)
+    })
+  } catch (err) {
+    console.error('Failed to load categories:', err)
+  }
+}
+
+function validateFilters(): boolean {
+  if (filters.value.from && filters.value.to && filters.value.from > filters.value.to) {
+    expenseStore.error = 'Дата "від" не може бути пізніше дати "до"'
+    return false
+  }
+
+  return true
+}
+
+async function loadExpenses() {
+  if (!validateFilters()) {
+    return
+  }
+
+  await expenseStore.fetchExpenses(expenseFilters.value)
+}
+
+async function resetFilters() {
+  const range = calculatePeriodDates('month')
+  filters.value = {
+    from: range.from,
+    to: range.to,
+    category: '',
+  }
+
+  await loadExpenses()
+}
 
 function showExpenseDetails(expense: Expense) {
   selectedExpense.value = expense
@@ -112,7 +184,40 @@ function formatDate(dateString: string): string {
       <div class="content-wrapper">
         <PageHeader title="Витрати" back-to="/">
           <template #actions>
-            <router-link to="/expenses/new" class="btn-primary">+ Додати витрату</router-link>
+            <div class="page-actions">
+              <form class="expenses-filters" @submit.prevent="loadExpenses">
+                <label class="filter-field">
+                  <span>Від</span>
+                  <input v-model="filters.from" type="date" class="filter-input" />
+                </label>
+
+                <label class="filter-field">
+                  <span>До</span>
+                  <input v-model="filters.to" type="date" class="filter-input" />
+                </label>
+
+                <label class="filter-field filter-field-category">
+                  <span>Категорія</span>
+                  <select v-model="filters.category" class="filter-input">
+                    <option value="">Всі категорії</option>
+                    <option
+                      v-for="category in categoryOptions"
+                      :key="category.id"
+                      :value="String(category.id)"
+                    >
+                      {{ category.name }}
+                    </option>
+                  </select>
+                </label>
+
+                <button type="submit" class="filter-button">Показати</button>
+                <button type="button" class="filter-button secondary" @click="resetFilters">
+                  Скинути
+                </button>
+              </form>
+
+              <router-link to="/expenses/new" class="btn-primary">+ Додати витрату</router-link>
+            </div>
           </template>
         </PageHeader>
 
@@ -122,7 +227,7 @@ function formatDate(dateString: string): string {
 
         <div v-else-if="expenseStore.error" class="error-message">
           {{ expenseStore.error }}
-          <button @click="expenseStore.fetchExpenses()" class="btn-retry">Спробувати знову</button>
+          <button @click="loadExpenses" class="btn-retry">Спробувати знову</button>
         </div>
 
         <div v-else>
@@ -138,8 +243,7 @@ function formatDate(dateString: string): string {
               </div>
               <div class="stat-value">{{ displayAmount }} {{ currencySymbol }}</div>
               <div class="stat-note">
-                <span v-if="selectedCurrency === 'UAH'">Всі суми в UAH</span>
-                <span v-else>
+                <span v-if="selectedCurrency !== 'UAH'">
                   Конвертовано з UAH за курсом НБУ
                   <br />
                   <small
@@ -181,7 +285,11 @@ function formatDate(dateString: string): string {
                 <button @click.stop="editExpense(expense.id)" class="btn-icon" title="Редагувати">
                   ✏️
                 </button>
-                <button @click.stop="confirmDelete(expense)" class="btn-icon delete" title="Видалити">
+                <button
+                  @click.stop="confirmDelete(expense)"
+                  class="btn-icon delete"
+                  title="Видалити"
+                >
                   🗑️
                 </button>
               </div>
@@ -224,6 +332,77 @@ function formatDate(dateString: string): string {
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.expenses-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-field-category {
+  min-width: 200px;
+}
+
+.filter-input {
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.filter-button {
+  align-self: flex-end;
+  height: fit-content;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary-color);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.filter-button:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.filter-button.secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .btn-primary {
@@ -506,6 +685,18 @@ function formatDate(dateString: string): string {
 
   .content-wrapper {
     padding: 20px;
+  }
+
+  .page-actions,
+  .expenses-filters {
+    width: 100%;
+  }
+
+  .filter-field,
+  .filter-field-category,
+  .filter-button,
+  .btn-primary {
+    width: 100%;
   }
 
   .expense-main {

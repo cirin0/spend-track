@@ -36,10 +36,24 @@ export interface AnalyticsCharts {
   weekly: ChartDataPoint[]
 }
 
-function calculatePeriodDates(period: string): { start_date: string; end_date: string } {
+export interface AnalyticsFilters {
+  from?: string
+  to?: string
+  category?: number
+}
+
+function formatDateParam(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+export function calculatePeriodDates(period: string): { from: string; to: string } {
   const now = new Date()
-  const end_date = now.toISOString().split('T')[0]!
-  let start_date: string
+  const to = formatDateParam(now)
+  let from: string
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const startOfYear = new Date(now.getFullYear(), 0, 1)
@@ -48,64 +62,54 @@ function calculatePeriodDates(period: string): { start_date: string; end_date: s
     case 'week':
       const weekAgo = new Date(now)
       weekAgo.setDate(now.getDate() - 7)
-      start_date = weekAgo.toISOString().split('T')[0]!
+      from = formatDateParam(weekAgo)
       break
     case 'month':
-      start_date = startOfMonth.toISOString().split('T')[0]!
+      from = formatDateParam(startOfMonth)
       break
     case 'quarter':
       const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
-      start_date = quarterStart.toISOString().split('T')[0]!
+      from = formatDateParam(quarterStart)
       break
     case 'year':
-      start_date = startOfYear.toISOString().split('T')[0]!
+      from = formatDateParam(startOfYear)
       break
     case 'all':
     default:
-      start_date = '2020-01-01'
+      from = '2020-01-01'
       break
   }
 
-  return { start_date, end_date }
+  return { from, to }
+}
+
+function buildAnalyticsParams(filters?: AnalyticsFilters): Record<string, number | string> {
+  const params: Record<string, number | string> = {}
+
+  if (filters?.from) {
+    params.from = filters.from
+  }
+
+  if (filters?.to) {
+    params.to = filters.to
+  }
+
+  if (filters?.category !== undefined) {
+    params.category = filters.category
+  }
+
+  return params
 }
 
 export const analyticsService = {
-  async getSummary(filters?: {
-    period?: string
-    start_date?: string
-    end_date?: string
-  }): Promise<AnalyticsSummary> {
-    let params = {}
-
-    if (filters?.start_date && filters?.end_date) {
-      params = {
-        start_date: filters.start_date,
-        end_date: filters.end_date,
-      }
-    } else if (filters?.period) {
-      params = calculatePeriodDates(filters.period)
-    }
-
+  async getSummary(filters?: AnalyticsFilters): Promise<AnalyticsSummary> {
+    const params = buildAnalyticsParams(filters)
     const response = await api.get('/analytics/summary', { params })
     return response.data.data
   },
 
-  async getCharts(filters?: {
-    period?: string
-    start_date?: string
-    end_date?: string
-  }): Promise<AnalyticsCharts> {
-    let params = {}
-
-    if (filters?.start_date && filters?.end_date) {
-      params = {
-        start_date: filters.start_date,
-        end_date: filters.end_date,
-      }
-    } else if (filters?.period) {
-      params = calculatePeriodDates(filters.period)
-    }
-
+  async getCharts(filters?: AnalyticsFilters): Promise<AnalyticsCharts> {
+    const params = buildAnalyticsParams(filters)
     const response = await api.get('/analytics/charts', { params })
     return response.data.data
   },

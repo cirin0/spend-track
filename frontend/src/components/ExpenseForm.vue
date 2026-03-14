@@ -32,7 +32,7 @@ const { fetchRates, getRate, convertToUAH, formatCurrency, ratesUnavailable } = 
 const defaultDate = new Date().toISOString().split('T')[0]
 
 const formData = ref<CreateExpenseData>({
-  amount: props.initialData?.amount || 0,
+  amount: props.initialData?.amount as number,
   currency: props.initialData?.currency || 'UAH',
   converted_amount: props.initialData?.converted_amount || 0,
   exchange_rate: props.initialData?.exchange_rate || 1.0,
@@ -115,116 +115,123 @@ function handleRetry() {
 </script>
 
 <template>
-    <h3>{{ title }}</h3>
+  <h3>{{ title }}</h3>
 
-    <div v-if="networkError" class="error-banner">
-      <div class="error-content">
-        <span class="error-icon">⚠️</span>
-        <div class="error-text">
-          <strong>Помилка мережі</strong>
-          <p>Не вдалося підключитися до сервера. Перевірте з'єднання.</p>
-        </div>
+  <div v-if="networkError" class="error-banner">
+    <div class="error-content">
+      <span class="error-icon">⚠️</span>
+      <div class="error-text">
+        <strong>Помилка мережі</strong>
+        <p>Не вдалося підключитися до сервера. Перевірте з'єднання.</p>
       </div>
-      <button @click="handleRetry" class="btn-retry">Спробувати знову</button>
     </div>
+    <button @click="handleRetry" class="btn-retry">Спробувати знову</button>
+  </div>
 
-    <div v-if="ratesUnavailable" class="warning-banner">
-      <span class="warning-icon">ℹ️</span>
-      <span>Курси валют недоступні. Використовується тільки UAH.</span>
-    </div>
+  <div v-if="ratesUnavailable" class="warning-banner">
+    <span class="warning-icon">ℹ️</span>
+    <span>Курси валют недоступні. Використовується тільки UAH.</span>
+  </div>
 
-    <form @submit.prevent="handleSubmit">
-      <div class="form-row">
-        <div class="form-group" :class="{ 'has-error': hasFieldError('amount') }">
-          <label for="amount">Сума *</label>
-          <input
-            id="amount"
-            v-model.number="formData.amount"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            required
-            :class="{ 'input-error': hasFieldError('amount') }"
-          />
-          <span v-if="hasFieldError('amount')" class="error-message">
-            {{ getFieldError('amount') }}
-          </span>
-        </div>
-
-        <div class="form-group" :class="{ 'has-error': hasFieldError('currency') }">
-          <label for="currency">Валюта *</label>
-          <CurrencySelector
-            v-model="formData.currency"
-            :disabled="currencySelectorDisabled"
-          />
-          <span v-if="hasFieldError('currency')" class="error-message">
-            {{ getFieldError('currency') }}
-          </span>
-        </div>
-      </div>
-
-      <div v-if="showConversionPreview" class="conversion-preview">
-        <div class="preview-label">Конвертована сума:</div>
-        <div class="preview-amount">{{ formatCurrency(convertedAmount, 'UAH') }}</div>
-        <div class="preview-rate">Курс: {{ currentRate.toFixed(4) }}</div>
-      </div>
-
-      <div class="form-group" :class="{ 'has-error': hasFieldError('description') }">
-        <label for="description">Опис</label>
-        <textarea
-          id="description"
-          v-model="formData.description"
-          placeholder="Опис витрати..."
-          rows="3"
-          :class="{ 'input-error': hasFieldError('description') }"
-        ></textarea>
-        <span v-if="hasFieldError('description')" class="error-message">
-          {{ getFieldError('description') }}
-        </span>
-      </div>
-
-      <div class="form-group" :class="{ 'has-error': hasFieldError('category_id') }">
-        <label for="category">Категорія</label>
-        <select
-          id="category"
-          v-model="formData.category_id"
-          :class="{ 'input-error': hasFieldError('category_id') }"
-        >
-          <option :value="undefined">Без категорії</option>
-          <option v-for="category in categories" :key="category.id" :value="category.id">
-            {{ category.icon }} {{ category.name }}
-          </option>
-        </select>
-        <span v-if="hasFieldError('category_id')" class="error-message">
-          {{ getFieldError('category_id') }}
-        </span>
-      </div>
-
-      <div class="form-group" :class="{ 'has-error': hasFieldError('date') }">
-        <label for="date">Дата *</label>
+  <form @submit.prevent="handleSubmit">
+    <div class="form-row">
+      <div class="form-group" :class="{ 'has-error': hasFieldError('amount') }">
+        <label for="amount">Сума *</label>
         <input
-          id="date"
-          v-model="formData.date"
-          type="date"
+          id="amount"
+          v-model.number="formData.amount"
+          type="number"
+          min="0"
+          placeholder="0.00"
           required
-          :class="{ 'input-error': hasFieldError('date') }"
+          :class="{ 'input-error': hasFieldError('amount') }"
         />
-        <span v-if="hasFieldError('date')" class="error-message">
-          {{ getFieldError('date') }}
+        <span v-if="hasFieldError('amount')" class="error-message">
+          {{ getFieldError('amount') }}
         </span>
       </div>
 
-      <div class="form-actions">
-        <button type="button" @click="$emit('cancel')" class="btn-secondary">Скасувати</button>
-        <button type="submit" class="btn-primary" :disabled="loading || networkError">
-          {{ loading ? 'Збереження...' : 'Зберегти' }}
-        </button>
+      <div class="form-group" :class="{ 'has-error': hasFieldError('currency') }">
+        <label for="currency">Валюта *</label>
+        <CurrencySelector v-model="formData.currency" :disabled="currencySelectorDisabled" />
+        <span v-if="hasFieldError('currency')" class="error-message">
+          {{ getFieldError('currency') }}
+        </span>
       </div>
-    </form>
+    </div>
+
+    <div v-if="showConversionPreview" class="conversion-preview">
+      <div class="preview-label">Конвертована сума:</div>
+      <div class="preview-amount">{{ formatCurrency(convertedAmount, 'UAH') }}</div>
+      <div class="preview-rate">Курс: {{ currentRate.toFixed(4) }}</div>
+    </div>
+
+    <div class="form-group" :class="{ 'has-error': hasFieldError('description') }">
+      <label for="description">Опис</label>
+      <textarea
+        id="description"
+        v-model="formData.description"
+        placeholder="Опис витрати..."
+        rows="3"
+        :class="{ 'input-error': hasFieldError('description') }"
+      ></textarea>
+      <span v-if="hasFieldError('description')" class="error-message">
+        {{ getFieldError('description') }}
+      </span>
+    </div>
+
+    <div class="form-group" :class="{ 'has-error': hasFieldError('category_id') }">
+      <label for="category">Категорія</label>
+      <select
+        id="category"
+        v-model="formData.category_id"
+        :class="{ 'input-error': hasFieldError('category_id') }"
+      >
+        <option :value="undefined">Без категорії</option>
+        <option v-for="category in categories" :key="category.id" :value="category.id">
+          {{ category.icon }} {{ category.name }}
+        </option>
+      </select>
+      <span v-if="hasFieldError('category_id')" class="error-message">
+        {{ getFieldError('category_id') }}
+      </span>
+    </div>
+
+    <div class="form-group" :class="{ 'has-error': hasFieldError('date') }">
+      <label for="date">Дата *</label>
+      <input
+        id="date"
+        v-model="formData.date"
+        type="date"
+        required
+        :class="{ 'input-error': hasFieldError('date') }"
+      />
+      <span v-if="hasFieldError('date')" class="error-message">
+        {{ getFieldError('date') }}
+      </span>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" @click="$emit('cancel')" class="btn-secondary">Скасувати</button>
+      <button type="submit" class="btn-primary" :disabled="loading || networkError">
+        {{ loading ? 'Збереження...' : 'Зберегти' }}
+      </button>
+    </div>
+  </form>
 </template>
 
 <style scoped>
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .expense-form-card {
   background: var(--card-bg);
   padding: 24px;

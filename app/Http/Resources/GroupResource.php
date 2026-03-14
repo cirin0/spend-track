@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class GroupResource extends JsonResource
 {
@@ -20,6 +21,7 @@ class GroupResource extends JsonResource
                 'id' => $this->owner->id,
                 'name' => $this->owner->name,
                 'email' => $this->owner->email,
+                'avatar' => $this->owner->avatar ? Storage::disk('r2')->url($this->owner->avatar) : null,
             ],
             'members_count' => $this->members->count(),
             'members' => $this->when(
@@ -30,6 +32,7 @@ class GroupResource extends JsonResource
                             'id' => $member->id,
                             'name' => $member->name,
                             'email' => $member->email,
+                            'avatar' => $member->avatar ? Storage::disk('r2')->url($member->avatar) : null,
                             'role' => $member->pivot->role,
                             'joined_at' => $member->pivot->joined_at,
                         ];

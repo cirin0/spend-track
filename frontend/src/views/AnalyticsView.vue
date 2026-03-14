@@ -14,6 +14,7 @@ import {
 } from 'chart.js'
 import { Pie, Line, Bar } from 'vue-chartjs'
 import analyticsService, {
+  calculatePeriodDates,
   type AnalyticsSummary,
   type AnalyticsCharts,
 } from '@/services/analyticsService'
@@ -40,11 +41,16 @@ ChartJS.register(
 
 const loading = ref(false)
 const error = ref('')
-const selectedPeriod = ref('month')
 const selectedCurrency = ref<'UAH' | 'USD' | 'EUR'>('UAH')
 const summary = ref<AnalyticsSummary | null>(null)
 const charts = ref<AnalyticsCharts | null>(null)
 const categories = ref<Map<number, Category>>(new Map())
+const defaultRange = calculatePeriodDates('month')
+const filters = ref({
+  from: defaultRange.from,
+  to: defaultRange.to,
+  category: '',
+})
 
 const pieChartOptions = {
   responsive: true,
@@ -186,6 +192,35 @@ const topCategoriesData = computed(() => {
   }
 })
 
+const categoryOptions = computed(() => {
+  return Array.from(categories.value.values()).sort((left, right) =>
+    left.name.localeCompare(right.name, 'uk'),
+  )
+})
+
+const selectedCategoryId = computed(() => {
+  if (!filters.value.category) {
+    return undefined
+  }
+
+  const categoryId = Number(filters.value.category)
+  return Number.isNaN(categoryId) ? undefined : categoryId
+})
+
+const selectedCategoryLabel = computed(() => {
+  if (selectedCategoryId.value === undefined) {
+    return 'Всі категорії'
+  }
+
+  return categories.value.get(selectedCategoryId.value)?.name || 'Обрана категорія'
+})
+
+const analyticsFilters = computed(() => ({
+  from: filters.value.from || undefined,
+  to: filters.value.to || undefined,
+  category: selectedCategoryId.value,
+}))
+
 const formatAmount = (amount: number): string => {
   if (amount === null || amount === undefined || isNaN(amount)) return '0.00'
   return new Intl.NumberFormat('uk-UA', {
@@ -213,7 +248,7 @@ const currencySymbol = computed(() => {
   const symbols = {
     UAH: '₴',
     USD: '$',
-    EUR: '€'
+    EUR: '€',
   }
   return symbols[selectedCurrency.value]
 })
@@ -245,6 +280,7 @@ const loadCategories = async () => {
   try {
     const response = await categoryService.getAll()
     const allCategories = [...response.default, ...response.user]
+    categories.value = new Map()
     allCategories.forEach((cat) => {
       categories.value.set(cat.id, cat)
     })
@@ -253,14 +289,27 @@ const loadCategories = async () => {
   }
 }
 
+const validateFilters = (): boolean => {
+  if (filters.value.from && filters.value.to && filters.value.from > filters.value.to) {
+    error.value = 'Дата "від" не може бути пізніше дати "до"'
+    return false
+  }
+
+  return true
+}
+
 const loadData = async () => {
+  if (!validateFilters()) {
+    return
+  }
+
   loading.value = true
   error.value = ''
 
   try {
     const [summaryData, chartsData] = await Promise.all([
-      analyticsService.getSummary({ period: selectedPeriod.value }),
-      analyticsService.getCharts({ period: selectedPeriod.value }),
+      analyticsService.getSummary(analyticsFilters.value),
+      analyticsService.getCharts(analyticsFilters.value),
     ])
     summary.value = summaryData
     charts.value = chartsData
@@ -271,6 +320,17 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const resetFilters = async () => {
+  const range = calculatePeriodDates('month')
+  filters.value = {
+    from: range.from,
+    to: range.to,
+    category: '',
+  }
+
+  await loadData()
 }
 
 onMounted(async () => {
@@ -287,13 +347,36 @@ onMounted(async () => {
       <div class="content-wrapper">
         <PageHeader title="Аналітика" back-to="/">
           <template #actions>
-            <select v-model="selectedPeriod" @change="loadData" class="period-select">
-              <option value="week">Тиждень</option>
-              <option value="month">Місяць</option>
-              <option value="quarter">Квартал</option>
-              <option value="year">Рік</option>
-              <option value="all">Весь час</option>
-            </select>
+            <form class="analytics-filters" @submit.prevent="loadData">
+              <label class="filter-field">
+                <span>Від</span>
+                <input v-model="filters.from" type="date" class="filter-input" />
+              </label>
+
+              <label class="filter-field">
+                <span>До</span>
+                <input v-model="filters.to" type="date" class="filter-input" />
+              </label>
+
+              <label class="filter-field filter-field-category">
+                <span>Категорія</span>
+                <select v-model="filters.category" class="filter-input">
+                  <option value="">Всі категорії</option>
+                  <option
+                    v-for="category in categoryOptions"
+                    :key="category.id"
+                    :value="String(category.id)"
+                  >
+                    {{ category.name }}
+                  </option>
+                </select>
+              </label>
+
+              <button type="submit" class="filter-button">Показати</button>
+              <button type="button" class="filter-button secondary" @click="resetFilters">
+                Скинути
+              </button>
+            </form>
           </template>
         </PageHeader>
 
@@ -308,6 +391,11 @@ onMounted(async () => {
           <div v-if="summary.categories && summary.categories.length > 0">
             <div class="stats-grid">
               <div class="stat-card">
+                <div class="stat-label">Фільтр категорії</div>
+                <div class="stat-value-small">{{ selectedCategoryLabel }}</div>
+              </div>
+
+              <div class="stat-card">
                 <div class="stat-label">Всього категорій</div>
                 <div class="stat-value">{{ summary.categories?.length || 0 }}</div>
               </div>
@@ -318,11 +406,12 @@ onMounted(async () => {
                 </div>
                 <div class="stat-value">{{ displayAmount }} {{ currencySymbol }}</div>
                 <div class="stat-note">
-                  <span v-if="selectedCurrency === 'UAH'">Всі суми в UAH</span>
-                  <span v-else>
+                  <span v-if="selectedCurrency !== 'UAH'">
                     Конвертовано з UAH за курсом НБУ
-                    <br>
-                    <small>на сьогодні 1 {{ selectedCurrency }} = {{ currentRate?.toFixed(2) }} ₴</small>
+                    <br />
+                    <small
+                      >на сьогодні 1 {{ selectedCurrency }} = {{ currentRate?.toFixed(2) }} ₴</small
+                    >
                   </span>
                 </div>
               </div>
@@ -430,21 +519,67 @@ onMounted(async () => {
   padding: 40px;
 }
 
-.period-select {
-  padding: 12px 20px;
+.analytics-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-field-category {
+  min-width: 200px;
+}
+
+.filter-input {
+  padding: 12px 14px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background: var(--input-bg);
   color: var(--text-primary);
   font-size: 14px;
-  cursor: pointer;
-  font-weight: 600;
   transition: border-color 0.2s;
 }
 
-.period-select:focus {
+.filter-input:focus {
   outline: none;
   border-color: var(--primary-color);
+}
+
+.filter-button {
+  align-self: flex-end;
+  height: fit-content;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary-color);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.filter-button:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.filter-button.secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .loading {
@@ -700,6 +835,16 @@ onMounted(async () => {
 
   .content-wrapper {
     padding: 20px;
+  }
+
+  .analytics-filters {
+    justify-content: stretch;
+  }
+
+  .filter-field,
+  .filter-field-category,
+  .filter-button {
+    width: 100%;
   }
 
   .charts-section {

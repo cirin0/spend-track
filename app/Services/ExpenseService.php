@@ -6,20 +6,43 @@ use App\Models\Category;
 use App\Models\Expense;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class ExpenseService
 {
-    public function getAllExpenses(int $userId, ?string $startDate = null, ?string $endDate = null): Collection
+    public function getAllExpenses(
+        int $userId,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $categoryId = null
+    ): Collection
     {
-        $query = Expense::with('category')
-            ->where('user_id', $userId)
-            ->orderBy('date', 'desc');
+        $query = $this->expenseQuery($userId, $categoryId)
+            ->with('category')
+            ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
 
-        if ($startDate && $endDate) {
-            $query->whereBetween('date', [$startDate, $endDate]);
+        if ($startDate) {
+            $query->whereDate('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('date', '<=', $endDate);
         }
 
         return $query->get();
+    }
+
+    private function expenseQuery(int $userId, ?int $categoryId = null): Builder
+    {
+        $query = Expense::query()->where('user_id', $userId);
+
+        if ($categoryId !== null) {
+            $query->where('category_id', $categoryId);
+        }
+
+        return $query;
     }
 
     public function getExpenseById(int $id, int $userId): ?Expense
@@ -36,6 +59,8 @@ class ExpenseService
             ->where('user_id', $userId)
             ->where('category_id', $categoryId)
             ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
     }
 
