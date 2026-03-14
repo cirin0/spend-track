@@ -3,6 +3,9 @@ import api from '@/config/api'
 export interface Expense {
   id: number
   amount: number
+  currency: string
+  converted_amount: number
+  exchange_rate: number
   description: string
   date: string
   category: {
@@ -32,6 +35,9 @@ export interface ExpensesListResponse {
 export interface CreateExpenseData {
   category_id?: number
   amount: number
+  currency: string
+  converted_amount: number
+  exchange_rate: number
   description?: string
   date: string
 }
@@ -39,6 +45,9 @@ export interface CreateExpenseData {
 export interface UpdateExpenseData {
   category_id?: number
   amount?: number
+  currency?: string
+  converted_amount?: number
+  exchange_rate?: number
   description?: string
   date?: string
 }
