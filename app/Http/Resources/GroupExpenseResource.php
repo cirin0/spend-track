@@ -13,6 +13,9 @@ class GroupExpenseResource extends JsonResource
             'id' => $this->id,
             'group_id' => $this->group_id,
             'amount' => (float)$this->amount,
+            'currency' => $this->currency,
+            'converted_amount' => (float)$this->converted_amount,
+            'exchange_rate' => (float)$this->exchange_rate,
             'description' => $this->description,
             'date' => $this->date->format('Y-m-d'),
             'user' => [
