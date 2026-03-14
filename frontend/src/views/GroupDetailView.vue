@@ -4,16 +4,61 @@ import { useRouter, useRoute } from 'vue-router'
 import { useGroupStore } from '@/stores/group'
 import { useAuthStore } from '@/stores/auth'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import { useCurrency } from '@/composables/useCurrency'
+import { useToast } from '@/composables/useToast'
 import { userService, type User } from '@/services/userService'
 import type { GroupExpense } from '@/services/groupService'
+import type { CreateExpenseData } from '@/services/expenseService'
+import type { AxiosError } from 'axios'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import CurrencyDisplay from '@/components/CurrencyDisplay.vue'
+import ExpenseForm from '@/components/ExpenseForm.vue'
 
 const router = useRouter()
 const route = useRoute()
 const groupStore = useGroupStore()
 const authStore = useAuthStore()
 const { marginLeft } = useSidebarMargin()
+const { fetchRates, getRate } = useCurrency()
+const toast = useToast()
+
+const selectedCurrency = ref<'UAH' | 'USD' | 'EUR'>('UAH')
+
+function cycleCurrency() {
+  const currencies: Array<'UAH' | 'USD' | 'EUR'> = ['UAH', 'USD', 'EUR']
+  const currentIndex = currencies.indexOf(selectedCurrency.value)
+  const nextIndex = (currentIndex + 1) % currencies.length
+  selectedCurrency.value = currencies[nextIndex]!
+}
+
+function convertAmount(amountInUAH: number, toCurrency: 'UAH' | 'USD' | 'EUR'): number {
+  if (toCurrency === 'UAH') return amountInUAH
+
+  const rate = getRate(toCurrency)
+  if (rate === 0 || rate === 1) return amountInUAH
+
+  return amountInUAH / rate
+}
+
+const displayAmount = computed(() => {
+  const converted = convertAmount(totalConverted.value, selectedCurrency.value)
+  return formatAmount(converted)
+})
+
+const currencySymbol = computed(() => {
+  const symbols = {
+    UAH: '₴',
+    USD: '$',
+    EUR: '€',
+  }
+  return symbols[selectedCurrency.value]
+})
+
+const currentRate = computed(() => {
+  if (selectedCurrency.value === 'UAH') return null
+  return getRate(selectedCurrency.value)
+})
 
 const groupId = computed(() => {
   const param = route.params.slug || route.params.id
@@ -32,18 +77,18 @@ const isMember = computed(() => {
   return groupStore.currentGroup?.members?.some((m) => m.id === authStore.user?.id)
 })
 
+const totalConverted = computed(() => {
+  return groupStore.expenses.reduce((sum, exp) => sum + (exp.converted_amount || exp.amount), 0)
+})
+
 const showAddExpenseModal = ref(false)
 const showAddCategoryModal = ref(false)
 const showAddMemberModal = ref(false)
 const showEditCategoryModal = ref(false)
 const showEditExpenseModal = ref(false)
 
-const expenseForm = ref({
-  category_id: 0,
-  amount: 0,
-  date: new Date().toISOString().split('T')[0] as string,
-  description: '',
-})
+const validationErrors = ref<Record<string, string[]>>({})
+const editExpenseData = ref<Partial<CreateExpenseData> | undefined>(undefined)
 
 const categoryForm = ref({
   name: '',
@@ -59,12 +104,6 @@ const editCategoryForm = ref({
 })
 
 const editingExpenseId = ref<number | null>(null)
-const editExpenseForm = ref({
-  category_id: 0,
-  amount: 0,
-  date: new Date().toISOString().split('T')[0] as string,
-  description: '',
-})
 
 const searchQuery = ref('')
 const searchResults = ref<User[]>([])
@@ -163,26 +202,34 @@ onMounted(async () => {
     await groupStore.fetchExpenses(numericId)
   }
   loading.value = false
+
+  // Fetch currency rates
+  await fetchRates()
 })
 
-async function handleAddExpense() {
+async function handleAddExpense(data: CreateExpenseData) {
   const numericId = groupStore.currentGroup?.id
   if (!numericId) return
 
-  const result = await groupStore.createExpense(numericId, {
-    category_id: expenseForm.value.category_id,
-    amount: expenseForm.value.amount,
-    date: expenseForm.value.date,
-    description: expenseForm.value.description,
-  })
+  validationErrors.value = {}
 
-  if (result) {
-    showAddExpenseModal.value = false
-    expenseForm.value = {
-      category_id: 0,
-      amount: 0,
-      date: new Date().toISOString().split('T')[0] as string,
-      description: '',
+  try {
+    const result = await groupStore.createExpense(numericId, data)
+
+    if (result) {
+      showAddExpenseModal.value = false
+      toast.success('Витрату успішно додано!')
+    }
+  } catch (error) {
+    const axiosError = error as AxiosError<{ errors?: Record<string, string[]>; message?: string }>
+
+    if (axiosError.response?.status === 422 && axiosError.response.data.errors) {
+      validationErrors.value = axiosError.response.data.errors
+      toast.error('Будь ласка, виправте помилки у формі')
+    } else if (axiosError.response?.data?.message) {
+      toast.error(axiosError.response.data.message)
+    } else {
+      toast.error('Не вдалося створити витрату')
     }
   }
 }
@@ -299,27 +346,65 @@ async function deleteExpenseById(expenseId: number) {
 
 function openEditExpense(expense: GroupExpense) {
   editingExpenseId.value = expense.id
-  editExpenseForm.value = {
+  editExpenseData.value = {
     category_id: expense.category_id,
     amount: typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount,
+    currency: expense.currency || 'UAH',
+    converted_amount: expense.converted_amount || expense.amount,
+    exchange_rate: expense.exchange_rate || 1.0,
     date: expense.date,
     description: expense.description || '',
   }
   showEditExpenseModal.value = true
 }
 
-async function handleEditExpense() {
+async function handleEditExpense(data: CreateExpenseData) {
   const numericId = groupStore.currentGroup?.id
   if (!editingExpenseId.value || !numericId) return
-  const result = await groupStore.updateExpense(numericId, editingExpenseId.value, {
-    category_id: editExpenseForm.value.category_id,
-    amount: editExpenseForm.value.amount,
-    date: editExpenseForm.value.date,
-    description: editExpenseForm.value.description,
-  })
-  if (result) {
-    showEditExpenseModal.value = false
-    editingExpenseId.value = null
+
+  validationErrors.value = {}
+
+  try {
+    const result = await groupStore.updateExpense(numericId, editingExpenseId.value, data)
+
+    if (result) {
+      showEditExpenseModal.value = false
+      editingExpenseId.value = null
+      editExpenseData.value = undefined
+      toast.success('Витрату успішно оновлено!')
+    }
+  } catch (error) {
+    const axiosError = error as AxiosError<{ errors?: Record<string, string[]>; message?: string }>
+
+    if (axiosError.response?.status === 422 && axiosError.response.data.errors) {
+      validationErrors.value = axiosError.response.data.errors
+      toast.error('Будь ласка, виправте помилки у формі')
+    } else if (axiosError.response?.data?.message) {
+      toast.error(axiosError.response.data.message)
+    } else {
+      toast.error('Не вдалося оновити витрату')
+    }
+  }
+}
+
+function handleCancelAddExpense() {
+  showAddExpenseModal.value = false
+  validationErrors.value = {}
+}
+
+function handleCancelEditExpense() {
+  showEditExpenseModal.value = false
+  editingExpenseId.value = null
+  editExpenseData.value = undefined
+  validationErrors.value = {}
+}
+
+async function handleRetry() {
+  try {
+    await fetchRates()
+    toast.info('Спроба завантажити курси валют...')
+  } catch {
+    toast.error('Не вдалося завантажити курси валют')
   }
 }
 
@@ -427,6 +512,30 @@ function formatDate(dateString: string): string {
               </button>
             </div>
 
+            <div v-if="groupStore.expenses.length > 0" class="stats-section">
+              <div class="stat-card">
+                <div class="stat-label">Всього витрат</div>
+                <div class="stat-value">{{ groupStore.expenses.length }}</div>
+              </div>
+              <div class="stat-card clickable" @click="cycleCurrency">
+                <div class="stat-label">
+                  Загальна сума
+                  <span class="currency-hint">Натисніть для зміни валюти</span>
+                </div>
+                <div class="stat-value">{{ displayAmount }} {{ currencySymbol }}</div>
+                <div class="stat-note">
+                  <span v-if="selectedCurrency === 'UAH'">Всі суми в UAH</span>
+                  <span v-else>
+                    Конвертовано з UAH за курсом НБУ
+                    <br />
+                    <small
+                      >на сьогодні 1 {{ selectedCurrency }} = {{ currentRate?.toFixed(2) }} ₴</small
+                    >
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div v-if="groupStore.expenses.length > 0" class="expenses-list">
               <div v-for="expense in groupStore.expenses" :key="expense.id" class="expense-item">
                 <div class="expense-category">
@@ -438,10 +547,16 @@ function formatDate(dateString: string): string {
                   >
                     {{ expense.category?.icon || '📁' }}
                   </div>
+                  <div class="category-name">{{ expense.category?.name || 'Без категорії' }}</div>
                 </div>
                 <div class="expense-details">
                   <div class="expense-header">
-                    <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+                    <CurrencyDisplay
+                      :amount="expense.amount"
+                      :currency="expense.currency"
+                      :converted-amount="expense.converted_amount"
+                      :show-converted="true"
+                    />
                     <div class="expense-date">{{ formatDate(expense.date) }}</div>
                   </div>
                   <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
@@ -546,44 +661,17 @@ function formatDate(dateString: string): string {
       </div>
     </main>
 
-    <div v-if="showAddExpenseModal" class="modal-overlay" @click.self="showAddExpenseModal = false">
+    <div v-if="showAddExpenseModal" class="modal-overlay" @click.self="handleCancelAddExpense">
       <div class="modal">
-        <h3>Додати витрату</h3>
-        <form @submit.prevent="handleAddExpense">
-          <div class="form-group">
-            <label>Категорія</label>
-            <select v-model="expenseForm.category_id" required class="form-control">
-              <option value="">Виберіть категорію</option>
-              <option v-for="cat in groupStore.categories" :key="cat.id" :value="cat.id">
-                {{ cat.icon }} {{ cat.name }}
-              </option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Сума</label>
-            <input
-              v-model.number="expenseForm.amount"
-              type="number"
-              step="0.01"
-              required
-              class="form-control"
-            />
-          </div>
-          <div class="form-group">
-            <label>Дата</label>
-            <input v-model="expenseForm.date" type="date" required class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Опис</label>
-            <textarea v-model="expenseForm.description" class="form-control"></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" @click="showAddExpenseModal = false" class="btn-secondary">
-              Скасувати
-            </button>
-            <button type="submit" class="btn-primary">Додати</button>
-          </div>
-        </form>
+        <ExpenseForm
+          title="Додати витрату"
+          :categories="groupStore.categories"
+          :loading="groupStore.loading"
+          :validation-errors="validationErrors"
+          @submit="handleAddExpense"
+          @cancel="handleCancelAddExpense"
+          @retry="handleRetry"
+        />
       </div>
     </div>
 
@@ -771,45 +859,19 @@ function formatDate(dateString: string): string {
     <div
       v-if="showEditExpenseModal"
       class="modal-overlay"
-      @click.self="showEditExpenseModal = false"
+      @click.self="handleCancelEditExpense"
     >
       <div class="modal">
-        <h3>Редагувати витрату</h3>
-        <form @submit.prevent="handleEditExpense">
-          <div class="form-group">
-            <label>Категорія</label>
-            <select v-model="editExpenseForm.category_id" required class="form-control">
-              <option value="">Виберіть категорію</option>
-              <option v-for="cat in groupStore.categories" :key="cat.id" :value="cat.id">
-                {{ cat.icon }} {{ cat.name }}
-              </option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Сума</label>
-            <input
-              v-model.number="editExpenseForm.amount"
-              type="number"
-              step="0.01"
-              required
-              class="form-control"
-            />
-          </div>
-          <div class="form-group">
-            <label>Дата</label>
-            <input v-model="editExpenseForm.date" type="date" required class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Опис</label>
-            <textarea v-model="editExpenseForm.description" class="form-control"></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" @click="showEditExpenseModal = false" class="btn-secondary">
-              Скасувати
-            </button>
-            <button type="submit" class="btn-primary">Зберегти</button>
-          </div>
-        </form>
+        <ExpenseForm
+          title="Редагувати витрату"
+          :initial-data="editExpenseData"
+          :categories="groupStore.categories"
+          :loading="groupStore.loading"
+          :validation-errors="validationErrors"
+          @submit="handleEditExpense"
+          @cancel="handleCancelEditExpense"
+          @retry="handleRetry"
+        />
       </div>
     </div>
   </div>
@@ -944,6 +1006,67 @@ function formatDate(dateString: string): string {
   font-weight: 700;
 }
 
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  padding: 24px;
+  border-radius: 12px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+}
+
+.stat-card.clickable:active {
+  transform: translateY(-2px);
+}
+
+[data-theme='light'] .stat-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+}
+
+.stat-label {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 8px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.currency-hint {
+  font-size: 10px;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.stat-note {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
 .btn-primary {
   padding: 10px 20px;
   border-radius: 8px;
@@ -990,6 +1113,10 @@ function formatDate(dateString: string): string {
 
 .expense-category {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
 .category-icon-small {
@@ -1000,6 +1127,16 @@ function formatDate(dateString: string): string {
   align-items: center;
   justify-content: center;
   font-size: 20px;
+}
+
+.category-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .expense-details {
@@ -1014,10 +1151,20 @@ function formatDate(dateString: string): string {
   margin-bottom: 8px;
 }
 
-.expense-amount {
+.expense-header :deep(.currency-display) {
+  flex-shrink: 0;
+}
+
+.expense-header :deep(.amount-primary) {
   font-size: 20px;
   font-weight: 700;
   color: var(--primary-color);
+}
+
+.expense-header :deep(.amount-converted) {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .expense-date {
@@ -1269,6 +1416,43 @@ function formatDate(dateString: string): string {
   transition: border-color 0.2s;
   background: var(--input-bg);
   flex-shrink: 0;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+.conversion-preview {
+  background: var(--secondary-bg);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.preview-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.preview-amount {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 4px;
+}
+
+.preview-rate {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .color-picker-input:hover {

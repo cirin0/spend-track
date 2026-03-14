@@ -19,10 +19,12 @@ import analyticsService, {
 } from '@/services/analyticsService'
 import { categoryService, type Category } from '@/services/categoryService'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import { useCurrency } from '@/composables/useCurrency'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 
 const { marginLeft } = useSidebarMargin()
+const { fetchRates, getRate } = useCurrency()
 
 ChartJS.register(
   ArcElement,
@@ -39,6 +41,7 @@ ChartJS.register(
 const loading = ref(false)
 const error = ref('')
 const selectedPeriod = ref('month')
+const selectedCurrency = ref<'UAH' | 'USD' | 'EUR'>('UAH')
 const summary = ref<AnalyticsSummary | null>(null)
 const charts = ref<AnalyticsCharts | null>(null)
 const categories = ref<Map<number, Category>>(new Map())
@@ -191,6 +194,42 @@ const formatAmount = (amount: number): string => {
   }).format(amount)
 }
 
+const convertAmount = (amountInUAH: number, toCurrency: 'UAH' | 'USD' | 'EUR'): number => {
+  if (toCurrency === 'UAH') return amountInUAH
+
+  const rate = getRate(toCurrency)
+  if (rate === 0 || rate === 1) return amountInUAH
+
+  return amountInUAH / rate
+}
+
+const displayAmount = computed(() => {
+  if (!summary.value) return '0.00'
+  const converted = convertAmount(summary.value.total_amount, selectedCurrency.value)
+  return formatAmount(converted)
+})
+
+const currencySymbol = computed(() => {
+  const symbols = {
+    UAH: '₴',
+    USD: '$',
+    EUR: '€'
+  }
+  return symbols[selectedCurrency.value]
+})
+
+const currentRate = computed(() => {
+  if (selectedCurrency.value === 'UAH') return null
+  return getRate(selectedCurrency.value)
+})
+
+const cycleCurrency = () => {
+  const currencies: Array<'UAH' | 'USD' | 'EUR'> = ['UAH', 'USD', 'EUR']
+  const currentIndex = currencies.indexOf(selectedCurrency.value)
+  const nextIndex = (currentIndex + 1) % currencies.length
+  selectedCurrency.value = currencies[nextIndex]!
+}
+
 const formatDate = (dateString: string): string => {
   if (!dateString) return '-'
   const date = new Date(dateString)
@@ -235,6 +274,7 @@ const loadData = async () => {
 }
 
 onMounted(async () => {
+  await fetchRates()
   await loadCategories()
   await loadData()
 })
@@ -271,9 +311,20 @@ onMounted(async () => {
                 <div class="stat-label">Всього категорій</div>
                 <div class="stat-value">{{ summary.categories?.length || 0 }}</div>
               </div>
-              <div class="stat-card">
-                <div class="stat-label">Загальна сума</div>
-                <div class="stat-value">{{ formatAmount(summary.total_amount) }} ₴</div>
+              <div class="stat-card clickable" @click="cycleCurrency">
+                <div class="stat-label">
+                  Загальна сума
+                  <span class="currency-hint">Натисніть для зміни валюти</span>
+                </div>
+                <div class="stat-value">{{ displayAmount }} {{ currencySymbol }}</div>
+                <div class="stat-note">
+                  <span v-if="selectedCurrency === 'UAH'">Всі суми в UAH</span>
+                  <span v-else>
+                    Конвертовано з UAH за курсом НБУ
+                    <br>
+                    <small>на сьогодні 1 {{ selectedCurrency }} = {{ currentRate?.toFixed(2) }} ₴</small>
+                  </span>
+                </div>
               </div>
               <div class="stat-card">
                 <div class="stat-label">Середньо на день</div>
@@ -441,6 +492,21 @@ onMounted(async () => {
   padding: 24px;
   border-radius: 12px;
   color: white;
+  transition: all 0.3s ease;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+}
+
+.stat-card.clickable:active {
+  transform: translateY(-2px);
 }
 
 [data-theme='light'] .stat-card {
@@ -452,6 +518,15 @@ onMounted(async () => {
   opacity: 0.9;
   margin-bottom: 8px;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.currency-hint {
+  font-size: 10px;
+  opacity: 0.6;
+  font-weight: 400;
 }
 
 .stat-value {
@@ -462,6 +537,13 @@ onMounted(async () => {
 .stat-value-small {
   font-size: 15px;
   font-weight: 600;
+}
+
+.stat-note {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+  font-weight: 400;
 }
 
 .charts-section {

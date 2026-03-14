@@ -1,21 +1,80 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useExpenseStore } from '@/stores/expense'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import { useCurrency } from '@/composables/useCurrency'
 import type { Expense } from '@/services/expenseService'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import CurrencyDisplay from '@/components/CurrencyDisplay.vue'
+import ExpenseDetailModal from '@/components/ExpenseDetailModal.vue'
 
 const router = useRouter()
 const expenseStore = useExpenseStore()
 const { marginLeft } = useSidebarMargin()
+const { fetchRates, getRate } = useCurrency()
+
+const showDetailModal = ref(false)
+const selectedExpense = ref<Expense | null>(null)
+const selectedCurrency = ref<'UAH' | 'USD' | 'EUR'>('UAH')
+
+const totalConverted = computed(() => {
+  return expenseStore.expenses.reduce((sum, exp) => sum + (exp.converted_amount || exp.amount), 0)
+})
+
+function cycleCurrency() {
+  const currencies: Array<'UAH' | 'USD' | 'EUR'> = ['UAH', 'USD', 'EUR']
+  const currentIndex = currencies.indexOf(selectedCurrency.value)
+  const nextIndex = (currentIndex + 1) % currencies.length
+  selectedCurrency.value = currencies[nextIndex]!
+}
+
+function convertAmount(amountInUAH: number, toCurrency: 'UAH' | 'USD' | 'EUR'): number {
+  if (toCurrency === 'UAH') return amountInUAH
+
+  const rate = getRate(toCurrency)
+  if (rate === 0 || rate === 1) return amountInUAH
+
+  return amountInUAH / rate
+}
+
+const displayAmount = computed(() => {
+  const converted = convertAmount(totalConverted.value, selectedCurrency.value)
+  return formatAmount(converted)
+})
+
+const currencySymbol = computed(() => {
+  const symbols = {
+    UAH: '₴',
+    USD: '$',
+    EUR: '€',
+  }
+  return symbols[selectedCurrency.value]
+})
+
+const currentRate = computed(() => {
+  if (selectedCurrency.value === 'UAH') return null
+  return getRate(selectedCurrency.value)
+})
 
 onMounted(async () => {
+  await fetchRates()
   await expenseStore.fetchExpenses()
 })
 
+function showExpenseDetails(expense: Expense) {
+  selectedExpense.value = expense
+  showDetailModal.value = true
+}
+
+function closeDetailModal() {
+  showDetailModal.value = false
+  selectedExpense.value = null
+}
+
 function editExpense(id: number) {
+  closeDetailModal()
   router.push(`/expenses/${id}/edit`)
 }
 
@@ -27,6 +86,7 @@ async function confirmDelete(expense: Expense) {
     const success = await expenseStore.deleteExpense(expense.id)
     if (success) {
       alert('Витрату успішно видалено')
+      closeDetailModal()
     }
   }
 }
@@ -71,15 +131,28 @@ function formatDate(dateString: string): string {
               <div class="stat-label">Всього витрат</div>
               <div class="stat-value">{{ expenseStore.expenses.length }}</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Загальна сума</div>
-              <div class="stat-value">{{ formatAmount(expenseStore.totalAmount) }} ₴</div>
+            <div class="stat-card clickable" @click="cycleCurrency">
+              <div class="stat-label">
+                Загальна сума
+                <span class="currency-hint">Натисніть для зміни валюти</span>
+              </div>
+              <div class="stat-value">{{ displayAmount }} {{ currencySymbol }}</div>
+              <div class="stat-note">
+                <span v-if="selectedCurrency === 'UAH'">Всі суми в UAH</span>
+                <span v-else>
+                  Конвертовано з UAH за курсом НБУ
+                  <br />
+                  <small
+                    >на сьогодні 1 {{ selectedCurrency }} = {{ currentRate?.toFixed(2) }} ₴</small
+                  >
+                </span>
+              </div>
             </div>
           </div>
 
           <div v-if="expenseStore.hasExpenses" class="expenses-list">
             <div class="expense-card" v-for="expense in expenseStore.expenses" :key="expense.id">
-              <div class="expense-main">
+              <div class="expense-main" @click="showExpenseDetails(expense)">
                 <div class="expense-category">
                   <div
                     class="category-icon-small"
@@ -92,7 +165,12 @@ function formatDate(dateString: string): string {
 
                 <div class="expense-details">
                   <div class="expense-header">
-                    <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+                    <CurrencyDisplay
+                      :amount="expense.amount"
+                      :currency="expense.currency"
+                      :converted-amount="expense.converted_amount"
+                      :show-converted="true"
+                    />
                     <div class="expense-date">{{ formatDate(expense.date) }}</div>
                   </div>
                   <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
@@ -100,10 +178,10 @@ function formatDate(dateString: string): string {
               </div>
 
               <div class="expense-actions">
-                <button @click="editExpense(expense.id)" class="btn-icon" title="Редагувати">
+                <button @click.stop="editExpense(expense.id)" class="btn-icon" title="Редагувати">
                   ✏️
                 </button>
-                <button @click="confirmDelete(expense)" class="btn-icon delete" title="Видалити">
+                <button @click.stop="confirmDelete(expense)" class="btn-icon delete" title="Видалити">
                   🗑️
                 </button>
               </div>
@@ -117,6 +195,14 @@ function formatDate(dateString: string): string {
             <router-link to="/expenses/new" class="btn-primary">Додати першу витрату</router-link>
           </div>
         </div>
+
+        <ExpenseDetailModal
+          :expense="selectedExpense"
+          :show="showDetailModal"
+          @close="closeDetailModal"
+          @edit="editExpense"
+          @delete="confirmDelete"
+        />
       </div>
     </main>
   </div>
@@ -203,6 +289,21 @@ function formatDate(dateString: string): string {
   padding: 24px;
   border-radius: 12px;
   color: white;
+  transition: all 0.3s ease;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+}
+
+.stat-card.clickable:active {
+  transform: translateY(-2px);
 }
 
 [data-theme='light'] .stat-card {
@@ -214,11 +315,27 @@ function formatDate(dateString: string): string {
   opacity: 0.9;
   margin-bottom: 8px;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.currency-hint {
+  font-size: 10px;
+  opacity: 0.6;
+  font-weight: 400;
 }
 
 .stat-value {
   font-size: 32px;
   font-weight: 700;
+}
+
+.stat-note {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+  font-weight: 400;
 }
 
 .expenses-list {
@@ -251,6 +368,7 @@ function formatDate(dateString: string): string {
   gap: 15px;
   align-items: center;
   min-width: 0;
+  cursor: pointer;
 }
 
 .expense-category {
@@ -294,11 +412,20 @@ function formatDate(dateString: string): string {
   gap: 15px;
 }
 
-.expense-amount {
+.expense-header :deep(.currency-display) {
+  flex-shrink: 0;
+}
+
+.expense-header :deep(.amount-primary) {
   font-size: 24px;
   font-weight: 700;
   color: var(--primary-color);
-  white-space: nowrap;
+}
+
+.expense-header :deep(.amount-converted) {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .expense-date {
