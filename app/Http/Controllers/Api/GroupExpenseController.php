@@ -28,7 +28,7 @@ class GroupExpenseController extends Controller
 
             return response()->json([
                 'data' => GroupExpenseResource::collection($expenses),
-                'total' => $expenses->sum('amount'),
+                'total' => $expenses->sum('converted_amount'),
                 'count' => $expenses->count(),
             ]);
         } catch (Exception $e) {

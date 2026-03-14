@@ -41,6 +41,9 @@ export interface GroupExpense {
   group_id: number
   category_id: number
   amount: number
+  currency: string
+  converted_amount: number
+  exchange_rate: number
   description: string | null
   date: string
   user: {
@@ -80,8 +83,11 @@ export interface UpdateGroupCategoryData {
 }
 
 export interface CreateGroupExpenseData {
-  category_id: number
+  category_id?: number
   amount: number
+  currency: string
+  converted_amount: number
+  exchange_rate: number
   description?: string
   date: string
 }
@@ -89,6 +95,9 @@ export interface CreateGroupExpenseData {
 export interface UpdateGroupExpenseData {
   category_id?: number
   amount?: number
+  currency?: string
+  converted_amount?: number
+  exchange_rate?: number
   description?: string
   date?: string
 }

@@ -19,7 +19,7 @@ class AnalyticsService
 
         $totalAmount = (float)Expense::query()->where('user_id', $userId)
             ->whereBetween('date', [$startDate, $endDate])
-            ->sum('amount');
+            ->sum('converted_amount');
 
         $categoryStats = $this->getCategoryStats($userId, $startDate, $endDate, $totalAmount);
 
@@ -63,7 +63,7 @@ class AnalyticsService
         if ($totalAmount === null) {
             $totalAmount = (float)Expense::query()->where('user_id', $userId)
                 ->whereBetween('date', [$startDate, $endDate])
-                ->sum('amount');
+                ->sum('converted_amount');
         }
 
         $stats = Expense::query()
@@ -73,7 +73,7 @@ class AnalyticsService
             ->select(
                 'expenses.category_id',
                 'categories.name as category_name',
-                DB::raw('SUM(expenses.amount) as total')
+                DB::raw('SUM(expenses.converted_amount) as total')
             )
             ->groupBy('expenses.category_id', 'categories.name')
             ->orderByDesc('total')
@@ -104,7 +104,7 @@ class AnalyticsService
             ->whereBetween('date', [$startDate, $endDate])
             ->select(
                 DB::raw("TO_CHAR(date, 'YYYY-MM') as label"),
-                DB::raw('SUM(amount) as amount')
+                DB::raw('SUM(converted_amount) as amount')
             )
             ->groupBy('label')
             ->orderBy('label')
@@ -134,7 +134,7 @@ class AnalyticsService
             ->whereBetween('date', [$startDate, $endDate])
             ->select(
                 DB::raw("TO_CHAR(date, 'IYYY-\"W\"IW') as label"),
-                DB::raw('SUM(amount) as total')
+                DB::raw('SUM(converted_amount) as total')
             )
             ->groupBy('label')
             ->orderBy('label')

@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useExpenseStore } from '@/stores/expense'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
+import { useToast } from '@/composables/useToast'
+import { useCurrency } from '@/composables/useCurrency'
 import AppSidebar from '@/components/AppSidebar.vue'
 import ExpenseForm from '@/components/ExpenseForm.vue'
+import CurrencyDisplay from '@/components/CurrencyDisplay.vue'
 import type { CreateExpenseData } from '@/services/expenseService'
+import type { AxiosError } from 'axios'
 
 const authStore = useAuthStore()
 const expenseStore = useExpenseStore()
 const { marginLeft } = useSidebarMargin()
+const toast = useToast()
+const { fetchRates } = useCurrency()
+
+const validationErrors = ref<Record<string, string[]>>({})
 
 const recentExpenses = computed(() => {
   return expenseStore.expenses.slice(0, 5)
@@ -20,9 +28,37 @@ onMounted(async () => {
 })
 
 async function handleCreateExpense(data: CreateExpenseData) {
-  const result = await expenseStore.createExpense(data)
-  if (result) {
-    await expenseStore.fetchStats()
+  validationErrors.value = {}
+
+  try {
+    const result = await expenseStore.createExpense(data)
+    if (result) {
+      await expenseStore.fetchStats()
+      toast.success('Витрату успішно додано!')
+    }
+  } catch (error) {
+    const axiosError = error as AxiosError<{ errors?: Record<string, string[]>; message?: string }>
+
+    if (axiosError.response?.status === 422 && axiosError.response.data.errors) {
+      // Validation errors
+      validationErrors.value = axiosError.response.data.errors
+      toast.error('Будь ласка, виправте помилки у формі')
+    } else if (axiosError.response?.data?.message) {
+      toast.error(axiosError.response.data.message)
+    } else if (axiosError.message === 'Network Error') {
+      toast.error('Помилка мережі. Перевірте з\'єднання з інтернетом.')
+    } else {
+      toast.error('Не вдалося створити витрату. Спробуйте ще раз.')
+    }
+  }
+}
+
+async function handleRetry() {
+  try {
+    await fetchRates()
+    toast.info('Спроба завантажити курси валют...')
+  } catch {
+    toast.error('Не вдалося завантажити курси валют')
   }
 }
 
@@ -56,8 +92,10 @@ function formatDate(dateString: string): string {
             <ExpenseForm
               title="Швидке додавання витрати"
               :loading="expenseStore.loading"
+              :validation-errors="validationErrors"
               @submit="handleCreateExpense"
               @cancel="resetForm"
+              @retry="handleRetry"
             />
           </div>
 
@@ -138,7 +176,13 @@ function formatDate(dateString: string): string {
                   {{ expense.category?.name || 'Без категорії' }} • {{ formatDate(expense.date) }}
                 </div>
               </div>
-              <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+              <CurrencyDisplay
+                :amount="expense.amount"
+                :currency="expense.currency"
+                :converted-amount="expense.converted_amount"
+                :show-converted="true"
+                class="expense-amount-display"
+              />
             </div>
           </div>
         </div>
@@ -404,10 +448,26 @@ h1 {
   color: var(--text-secondary);
 }
 
-.expense-amount {
+.expense-amount-display {
+  flex-shrink: 0;
+}
+
+.expense-amount-display :deep(.currency-display) {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.expense-amount-display :deep(.amount-primary) {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.expense-amount-display :deep(.amount-converted) {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 @media (max-width: 1200px) {

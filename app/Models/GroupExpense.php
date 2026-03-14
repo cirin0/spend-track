@@ -12,12 +12,17 @@ class GroupExpense extends Model
         'user_id',
         'category_id',
         'amount',
+        'currency',
+        'converted_amount',
+        'exchange_rate',
         'description',
         'date',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'converted_amount' => 'decimal:2',
+        'exchange_rate' => 'decimal:4',
         'date' => 'date',
     ];
 
