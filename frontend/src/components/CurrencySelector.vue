@@ -26,12 +26,7 @@ function handleChange(event: Event) {
 </script>
 
 <template>
-  <select
-    :value="modelValue"
-    :disabled="disabled"
-    @change="handleChange"
-    class="currency-selector"
-  >
+  <select :value="modelValue" :disabled="disabled" @change="handleChange" class="currency-selector">
     <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
       {{ currency.symbol }} {{ currency.code }}
     </option>

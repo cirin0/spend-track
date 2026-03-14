@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Analytics;
+namespace App\Http\Requests\Expense;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class AnalyticsRequest extends FormRequest
+class ExpenseIndexRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {

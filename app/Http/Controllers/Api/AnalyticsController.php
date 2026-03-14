@@ -16,13 +16,11 @@ class AnalyticsController extends Controller
 
     public function summary(AnalyticsRequest $request)
     {
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-
         $summary = $this->analyticsService->getSummary(
             auth()->id(),
-            $startDate,
-            $endDate
+            $request->fromDate(),
+            $request->toDate(),
+            $request->categoryId()
         );
 
         return new AnalyticsSummaryResource($summary);
@@ -30,13 +28,11 @@ class AnalyticsController extends Controller
 
     public function charts(AnalyticsRequest $request)
     {
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-
         $chartData = $this->analyticsService->getChartData(
             auth()->id(),
-            $startDate,
-            $endDate
+            $request->fromDate(),
+            $request->toDate(),
+            $request->categoryId()
         );
 
         return new AnalyticsChartResource($chartData);

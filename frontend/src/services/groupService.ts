@@ -4,6 +4,7 @@ export interface GroupMember {
   id: number
   name: string
   email: string
+  avatar?: string | null
   role: string
   joined_at: string
 }
@@ -19,6 +20,7 @@ export interface Group {
     id: number
     name: string
     email: string
+    avatar?: string | null
   }
   members_count: number
   members?: GroupMember[]
@@ -50,6 +52,7 @@ export interface GroupExpense {
     id: number
     name: string
     email: string
+    avatar?: string | null
   }
   category: GroupCategory
   created_at: string

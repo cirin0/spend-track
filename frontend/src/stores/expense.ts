@@ -4,6 +4,7 @@ import {
   expenseService,
   type Expense,
   type CreateExpenseData,
+  type ExpenseFilters,
   type UpdateExpenseData,
   type ExpenseStatsResponse,
 } from '@/services/expenseService'
@@ -17,12 +18,32 @@ export const useExpenseStore = defineStore('expense', () => {
   const hasExpenses = computed(() => expenses.value.length > 0)
   const totalAmount = computed(() => expenses.value.reduce((sum, exp) => sum + exp.amount, 0))
 
-  async function fetchExpenses() {
+  function sortExpenses(items: Expense[]): Expense[] {
+    return [...items].sort((left, right) => {
+      const leftDate = new Date(left.date).getTime()
+      const rightDate = new Date(right.date).getTime()
+
+      if (leftDate !== rightDate) {
+        return rightDate - leftDate
+      }
+
+      const leftCreatedAt = new Date(left.created_at).getTime()
+      const rightCreatedAt = new Date(right.created_at).getTime()
+
+      if (leftCreatedAt !== rightCreatedAt) {
+        return rightCreatedAt - leftCreatedAt
+      }
+
+      return right.id - left.id
+    })
+  }
+
+  async function fetchExpenses(filters?: ExpenseFilters) {
     loading.value = true
     error.value = null
 
     try {
-      expenses.value = await expenseService.getAll()
+      expenses.value = sortExpenses(await expenseService.getAll(filters))
       return true
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } }
@@ -43,7 +64,7 @@ export const useExpenseStore = defineStore('expense', () => {
       if (!Array.isArray(expenses.value)) {
         expenses.value = []
       }
-      expenses.value.unshift(newExpense)
+      expenses.value = sortExpenses([newExpense, ...expenses.value])
       return newExpense
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } }
@@ -66,6 +87,7 @@ export const useExpenseStore = defineStore('expense', () => {
       const index = expenses.value.findIndex((e) => e.id === id)
       if (index !== -1) {
         expenses.value[index] = updatedExpense
+        expenses.value = sortExpenses(expenses.value)
       }
 
       return updatedExpense

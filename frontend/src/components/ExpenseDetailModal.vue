@@ -119,7 +119,8 @@ function handleClose() {
                 <div v-if="isNonUAH" class="currency-row">
                   <span class="currency-label">Курс обміну</span>
                   <div class="exchange-rate-value">
-                    1 {{ expense.currency }} = {{ formatExchangeRate(expense.exchange_rate || 1) }} ₴
+                    1 {{ expense.currency }} =
+                    {{ formatExchangeRate(expense.exchange_rate || 1) }} ₴
                   </div>
                 </div>
 
@@ -132,12 +133,8 @@ function handleClose() {
           </div>
 
           <div class="modal-footer">
-            <button @click="handleEdit" class="btn-secondary">
-              ✏️ Редагувати
-            </button>
-            <button @click="handleDelete" class="btn-danger">
-              🗑️ Видалити
-            </button>
+            <button @click="handleEdit" class="btn-secondary">✏️ Редагувати</button>
+            <button @click="handleDelete" class="btn-danger">🗑️ Видалити</button>
           </div>
         </div>
       </div>

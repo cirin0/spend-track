@@ -157,9 +157,7 @@ async function saveProfile() {
               </div>
 
               <div v-if="isEditing" class="avatar-controls">
-                <label for="avatar-input" class="avatar-upload-btn">
-                  📷 Завантажити фото
-                </label>
+                <label for="avatar-input" class="avatar-upload-btn"> 📷 Завантажити фото </label>
                 <input
                   id="avatar-input"
                   type="file"
@@ -210,12 +208,8 @@ async function saveProfile() {
               </div>
 
               <div class="form-actions">
-                <button @click="saveProfile" class="save-btn">
-                  💾 Зберегти
-                </button>
-                <button @click="toggleEdit" class="cancel-btn">
-                  Скасувати
-                </button>
+                <button @click="saveProfile" class="save-btn">💾 Зберегти</button>
+                <button @click="toggleEdit" class="cancel-btn">Скасувати</button>
               </div>
             </div>
 
@@ -244,9 +238,7 @@ async function saveProfile() {
               </div>
 
               <div class="actions">
-                <button @click="toggleEdit" class="edit-btn">
-                  ✏️ Редагувати профіль
-                </button>
+                <button @click="toggleEdit" class="edit-btn">✏️ Редагувати профіль</button>
                 <button @click="handleLogout" class="logout-btn">Вийти</button>
                 <router-link to="/" class="back-btn">На головну</router-link>
               </div>

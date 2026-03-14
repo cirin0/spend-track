@@ -5,23 +5,24 @@ namespace App\Services;
 use App\Models\Expense;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
-    public function getSummary(int $userId, ?string $startDate = null, ?string $endDate = null): array
+    public function getSummary(int $userId, ?string $startDate = null, ?string $endDate = null, ?int $categoryId = null): array
     {
-        [$startDate, $endDate] = $this->resolveDates($userId, $startDate, $endDate);
+        [$startDate, $endDate] = $this->resolveDates($userId, $startDate, $endDate, $categoryId);
 
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
         $daysCount = max(1, $start->diffInDays($end) + 1);
 
-        $totalAmount = (float)Expense::query()->where('user_id', $userId)
+        $totalAmount = (float)$this->expenseQuery($userId, $categoryId)
             ->whereBetween('date', [$startDate, $endDate])
             ->sum('converted_amount');
 
-        $categoryStats = $this->getCategoryStats($userId, $startDate, $endDate, $totalAmount);
+        $categoryStats = $this->getCategoryStats($userId, $startDate, $endDate, $totalAmount, $categoryId);
 
         return [
             'total_amount' => $totalAmount,
@@ -39,10 +40,10 @@ class AnalyticsService
         ];
     }
 
-    private function resolveDates(int $userId, ?string $startDate, ?string $endDate, bool $forCharts = false): array
+    private function resolveDates(int $userId, ?string $startDate, ?string $endDate, ?int $categoryId = null, bool $forCharts = false): array
     {
         if (!$startDate) {
-            $minDate = Expense::query()->where('user_id', $userId)->min('date');
+            $minDate = $this->expenseQuery($userId, $categoryId)->min('date');
 
             if ($forCharts) {
                 $startDate = $minDate
@@ -58,16 +59,26 @@ class AnalyticsService
         return [$startDate, $endDate];
     }
 
-    public function getCategoryStats(int $userId, string $startDate, string $endDate, ?float $totalAmount = null): array
+    private function expenseQuery(int $userId, ?int $categoryId = null, string $table = 'expenses'): Builder
+    {
+        $query = Expense::query()->where("{$table}.user_id", $userId);
+
+        if ($categoryId !== null) {
+            $query->where("{$table}.category_id", $categoryId);
+        }
+
+        return $query;
+    }
+
+    public function getCategoryStats(int $userId, string $startDate, string $endDate, ?float $totalAmount = null, ?int $categoryId = null): array
     {
         if ($totalAmount === null) {
-            $totalAmount = (float)Expense::query()->where('user_id', $userId)
+            $totalAmount = (float)$this->expenseQuery($userId, $categoryId)
                 ->whereBetween('date', [$startDate, $endDate])
                 ->sum('converted_amount');
         }
 
-        $stats = Expense::query()
-            ->where('expenses.user_id', $userId)
+        $stats = $this->expenseQuery($userId, $categoryId)
             ->whereBetween('expenses.date', [$startDate, $endDate])
             ->leftJoin('categories', 'expenses.category_id', '=', 'categories.id')
             ->select(
@@ -87,20 +98,19 @@ class AnalyticsService
         ])->toArray();
     }
 
-    public function getChartData(int $userId, ?string $startDate = null, ?string $endDate = null): array
+    public function getChartData(int $userId, ?string $startDate = null, ?string $endDate = null, ?int $categoryId = null): array
     {
-        [$startDate, $endDate] = $this->resolveDates($userId, $startDate, $endDate, true);
+        [$startDate, $endDate] = $this->resolveDates($userId, $startDate, $endDate, $categoryId, true);
 
         return [
-            'monthly' => $this->getMonthlyExpenses($userId, $startDate, $endDate),
-            'weekly' => $this->getWeeklyExpenses($userId, $startDate, $endDate),
+            'monthly' => $this->getMonthlyExpenses($userId, $startDate, $endDate, $categoryId),
+            'weekly' => $this->getWeeklyExpenses($userId, $startDate, $endDate, $categoryId),
         ];
     }
 
-    private function getMonthlyExpenses(int $userId, string $startDate, string $endDate): array
+    private function getMonthlyExpenses(int $userId, string $startDate, string $endDate, ?int $categoryId = null): array
     {
-        $stats = Expense::query()
-            ->where('user_id', $userId)
+        $stats = $this->expenseQuery($userId, $categoryId)
             ->whereBetween('date', [$startDate, $endDate])
             ->select(
                 DB::raw("TO_CHAR(date, 'YYYY-MM') as label"),
@@ -127,10 +137,9 @@ class AnalyticsService
         return array_values($data);
     }
 
-    private function getWeeklyExpenses(int $userId, string $startDate, string $endDate): array
+    private function getWeeklyExpenses(int $userId, string $startDate, string $endDate, ?int $categoryId = null): array
     {
-        $stats = Expense::query()
-            ->where('user_id', $userId)
+        $stats = $this->expenseQuery($userId, $categoryId)
             ->whereBetween('date', [$startDate, $endDate])
             ->select(
                 DB::raw("TO_CHAR(date, 'IYYY-\"W\"IW') as label"),

@@ -16,7 +16,7 @@ const groupId = computed(() => {
   const param = route.params.slug || route.params.id
   return param ? (typeof param === 'string' ? param : String(param[0])) : null
 })
-const isSlug = computed(() => groupId.value ? isNaN(Number(groupId.value)) : false)
+const isSlug = computed(() => (groupId.value ? isNaN(Number(groupId.value)) : false))
 
 const formLoading = ref(false)
 

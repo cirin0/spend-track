@@ -5,11 +5,16 @@ const { toasts, remove } = useToast()
 
 function getIcon(type: string) {
   switch (type) {
-    case 'success': return '✓'
-    case 'error': return '✕'
-    case 'warning': return '⚠'
-    case 'info': return 'ℹ'
-    default: return 'ℹ'
+    case 'success':
+      return '✓'
+    case 'error':
+      return '✕'
+    case 'warning':
+      return '⚠'
+    case 'info':
+      return 'ℹ'
+    default:
+      return 'ℹ'
   }
 }
 </script>

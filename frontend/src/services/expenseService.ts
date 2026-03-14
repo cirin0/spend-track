@@ -32,6 +32,12 @@ export interface ExpensesListResponse {
   count: number
 }
 
+export interface ExpenseFilters {
+  from?: string
+  to?: string
+  category?: number
+}
+
 export interface CreateExpenseData {
   category_id?: number
   amount: number
@@ -72,8 +78,22 @@ export interface ExpenseStatsResponse {
 }
 
 export const expenseService = {
-  async getAll(): Promise<Expense[]> {
-    const response = await api.get<ExpensesListResponse>('/expenses')
+  async getAll(filters?: ExpenseFilters): Promise<Expense[]> {
+    const params: Record<string, string | number> = {}
+
+    if (filters?.from) {
+      params.from = filters.from
+    }
+
+    if (filters?.to) {
+      params.to = filters.to
+    }
+
+    if (filters?.category !== undefined) {
+      params.category = filters.category
+    }
+
+    const response = await api.get<ExpensesListResponse>('/expenses', { params })
     return response.data.data
   },
 

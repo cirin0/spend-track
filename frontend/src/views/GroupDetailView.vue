@@ -524,8 +524,7 @@ function formatDate(dateString: string): string {
                 </div>
                 <div class="stat-value">{{ displayAmount }} {{ currencySymbol }}</div>
                 <div class="stat-note">
-                  <span v-if="selectedCurrency === 'UAH'">Всі суми в UAH</span>
-                  <span v-else>
+                  <span v-if="selectedCurrency !== 'UAH'">
                     Конвертовано з UAH за курсом НБУ
                     <br />
                     <small
@@ -631,7 +630,17 @@ function formatDate(dateString: string): string {
                 class="member-item"
               >
                 <div class="member-info">
-                  <div class="member-avatar">{{ member.name.charAt(0).toUpperCase() }}</div>
+                  <div class="member-avatar">
+                    <img
+                      v-if="member.avatar"
+                      :src="member.avatar"
+                      :alt="member.name"
+                      class="member-avatar-image"
+                    />
+                    <div v-else class="member-avatar-placeholder">
+                      {{ member.name.charAt(0).toUpperCase() }}
+                    </div>
+                  </div>
                   <div>
                     <div class="member-name">
                       {{ member.name }}
@@ -694,11 +703,7 @@ function formatDate(dateString: string): string {
           <div class="form-group">
             <label>Колір</label>
             <div class="color-input-group">
-              <input
-                v-model="categoryForm.color"
-                type="color"
-                class="color-picker-input"
-              />
+              <input v-model="categoryForm.color" type="color" class="color-picker-input" />
               <input
                 v-model="categoryForm.color"
                 type="text"
@@ -831,11 +836,7 @@ function formatDate(dateString: string): string {
           <div class="form-group">
             <label>Колір</label>
             <div class="color-input-group">
-              <input
-                v-model="editCategoryForm.color"
-                type="color"
-                class="color-picker-input"
-              />
+              <input v-model="editCategoryForm.color" type="color" class="color-picker-input" />
               <input
                 v-model="editCategoryForm.color"
                 type="text"
@@ -856,11 +857,7 @@ function formatDate(dateString: string): string {
       </div>
     </div>
 
-    <div
-      v-if="showEditExpenseModal"
-      class="modal-overlay"
-      @click.self="handleCancelEditExpense"
-    >
+    <div v-if="showEditExpenseModal" class="modal-overlay" @click.self="handleCancelEditExpense">
       <div class="modal">
         <ExpenseForm
           title="Редагувати витрату"
@@ -1295,6 +1292,19 @@ function formatDate(dateString: string): string {
   width: 50px;
   height: 50px;
   border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--primary-color);
+}
+
+.member-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-avatar-placeholder {
+  width: 100%;
+  height: 100%;
   background: var(--primary-color);
   color: white;
   display: flex;
