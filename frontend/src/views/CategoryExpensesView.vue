@@ -6,6 +6,7 @@ import { useCategoryStore } from '@/stores/category'
 import { useSidebarMargin } from '@/composables/useSidebarMargin'
 import PageHeader from '@/components/PageHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import CurrencyDisplay from '@/components/CurrencyDisplay.vue'
 
 const route = useRoute()
 const categoryStore = useCategoryStore()
@@ -110,7 +111,12 @@ function formatDateTime(dateString: string): string {
             <h2>Список витрат</h2>
             <div class="expense-card" v-for="expense in expensesData.data" :key="expense.id">
               <div class="expense-header">
-                <div class="expense-amount">{{ formatAmount(expense.amount) }} ₴</div>
+                <CurrencyDisplay
+                  :amount="expense.amount"
+                  :currency="expense.currency"
+                  :converted-amount="expense.converted_amount"
+                  :show-converted="true"
+                />
                 <div class="expense-date">{{ formatDate(expense.date) }}</div>
               </div>
               <div class="expense-description">{{ expense.description || 'Без опису' }}</div>
@@ -240,10 +246,20 @@ function formatDateTime(dateString: string): string {
   margin-bottom: 10px;
 }
 
-.expense-amount {
+.expense-header :deep(.currency-display) {
+  flex-shrink: 0;
+}
+
+.expense-header :deep(.amount-primary) {
   font-size: 24px;
   font-weight: 700;
   color: var(--primary-color);
+}
+
+.expense-header :deep(.amount-converted) {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .expense-date {

@@ -49,6 +49,9 @@ class ExpenseService
             'user_id' => $userId,
             'category_id' => $data['category_id'] ?? null,
             'amount' => $data['amount'],
+            'currency' => $data['currency'],
+            'converted_amount' => $data['converted_amount'],
+            'exchange_rate' => $data['exchange_rate'],
             'description' => $data['description'] ?? null,
             'date' => $data['date'],
         ]);
@@ -101,7 +104,7 @@ class ExpenseService
     {
         $query = Expense::query()
             ->where('user_id', $userId)
-            ->selectRaw('category_id, SUM(amount) as total, COUNT(*) as count')
+            ->selectRaw('category_id, SUM(converted_amount) as total, COUNT(*) as count')
             ->groupBy('category_id');
 
         if ($startDate && $endDate) {
