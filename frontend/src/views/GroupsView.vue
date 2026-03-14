@@ -41,7 +41,7 @@ onMounted(async () => {
               v-for="group in groupStore.groups"
               :key="group.id"
               class="group-card"
-              @click="router.push(`/groups/${group.id}`)"
+              @click="router.push(`/groups/${group.slug}`)"
             >
               <div class="group-icon" :style="{ backgroundColor: group.color || '#3b82f6' }">
                 {{ group.icon || '👥' }}

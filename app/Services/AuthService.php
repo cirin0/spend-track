@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthService
@@ -30,4 +31,21 @@ class AuthService
             'password' => $password,
         ]);
     }
+
+    public function updateProfile(User $user, array $data, $avatarFile = null): User
+    {
+        if ($avatarFile) {
+            if ($user->avatar && Storage::disk('r2')->exists($user->avatar)) {
+                Storage::disk('r2')->delete($user->avatar);
+            }
+
+            $path = $avatarFile->store('avatars', 'r2');
+            $data['avatar'] = $path;
+        }
+
+        $user->update($data);
+
+        return $user->fresh();
+    }
+
 }

@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
+import ToastContainer from './components/ToastContainer.vue'
 
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
@@ -14,6 +15,7 @@ onMounted(() => {
 
 <template>
   <router-view />
+  <ToastContainer />
 </template>
 
 <style>

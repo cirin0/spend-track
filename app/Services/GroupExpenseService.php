@@ -38,7 +38,8 @@ class GroupExpenseService
             throw new Exception('Unauthorized or group not found');
         }
 
-        if (isset($data['category_id'])) {
+        // Only validate category if it's provided and not null
+        if (isset($data['category_id']) && $data['category_id'] !== null) {
             $category = GroupCategory::query()->where('id', $data['category_id'])
                 ->where('group_id', $groupId)
                 ->first();
@@ -53,6 +54,9 @@ class GroupExpenseService
             'user_id' => $userId,
             'category_id' => $data['category_id'] ?? null,
             'amount' => $data['amount'],
+            'currency' => $data['currency'],
+            'converted_amount' => $data['converted_amount'],
+            'exchange_rate' => $data['exchange_rate'],
             'description' => $data['description'] ?? null,
             'date' => $data['date'],
         ]);
@@ -66,10 +70,13 @@ class GroupExpenseService
             throw new Exception('Expense not found');
         }
 
-        if ($expense->user_id !== $userId) {
-            throw new Exception('Only expense author can update it');
+        // Allow expense author or group owner to update
+        $isOwner = $expense->group->owner_id === $userId;
+        if ($expense->user_id !== $userId && !$isOwner) {
+            throw new Exception('Only expense author or group owner can update it');
         }
 
+        // Only validate category if it's provided and not null
         if (isset($data['category_id']) && $data['category_id'] !== null) {
             $category = GroupCategory::query()->where('id', $data['category_id'])
                 ->where('group_id', $expense->group_id)
@@ -87,14 +94,16 @@ class GroupExpenseService
 
     public function deleteExpense(int $expenseId, int $userId): bool
     {
-        $expense = GroupExpense::query()->find($expenseId);
+        $expense = GroupExpense::with('group')->find($expenseId);
 
         if (!$expense) {
             throw new Exception('Expense not found');
         }
 
-        if ($expense->user_id !== $userId) {
-            throw new Exception('Only expense author can delete it');
+        // Allow expense author or group owner to delete
+        $isOwner = $expense->group->owner_id === $userId;
+        if ($expense->user_id !== $userId && !$isOwner) {
+            throw new Exception('Only expense author or group owner can delete it');
         }
 
         return $expense->delete();
@@ -115,7 +124,7 @@ class GroupExpenseService
         }
 
         $categoryStats = $query->clone()
-            ->selectRaw('category_id, SUM(amount) as total, COUNT(*) as count')
+            ->selectRaw('category_id, SUM(converted_amount) as total, COUNT(*) as count')
             ->groupBy('category_id')
             ->get()
             ->map(function ($stat) {
@@ -128,7 +137,7 @@ class GroupExpenseService
             });
 
         $userStats = $query->clone()
-            ->selectRaw('user_id, SUM(amount) as total, COUNT(*) as count')
+            ->selectRaw('user_id, SUM(converted_amount) as total, COUNT(*) as count')
             ->groupBy('user_id')
             ->get()
             ->map(function ($stat) {
@@ -144,7 +153,7 @@ class GroupExpenseService
                 ];
             });
 
-        $total = $query->sum('amount');
+        $total = $query->sum('converted_amount');
 
         $categoryStats = $categoryStats->map(function ($item) use ($total) {
             $item['percentage'] = $total > 0 ? round(($item['total'] / $total) * 100, 2) : 0;

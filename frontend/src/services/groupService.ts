@@ -11,6 +11,7 @@ export interface GroupMember {
 export interface Group {
   id: number
   name: string
+  slug: string
   description: string | null
   icon: string | null
   color: string | null
@@ -40,6 +41,9 @@ export interface GroupExpense {
   group_id: number
   category_id: number
   amount: number
+  currency: string
+  converted_amount: number
+  exchange_rate: number
   description: string | null
   date: string
   user: {
@@ -79,8 +83,11 @@ export interface UpdateGroupCategoryData {
 }
 
 export interface CreateGroupExpenseData {
-  category_id: number
+  category_id?: number
   amount: number
+  currency: string
+  converted_amount: number
+  exchange_rate: number
   description?: string
   date: string
 }
@@ -88,6 +95,9 @@ export interface CreateGroupExpenseData {
 export interface UpdateGroupExpenseData {
   category_id?: number
   amount?: number
+  currency?: string
+  converted_amount?: number
+  exchange_rate?: number
   description?: string
   date?: string
 }
@@ -110,6 +120,11 @@ export const groupService = {
 
   async getById(id: number): Promise<Group> {
     const response = await api.get<Group>(`/groups/${id}`)
+    return response.data
+  },
+
+  async getBySlug(slug: string): Promise<Group> {
+    const response = await api.get<Group>(`/groups/${slug}`)
     return response.data
   },
 

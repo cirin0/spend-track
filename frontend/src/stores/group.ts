@@ -59,6 +59,23 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
+  async function fetchGroupBySlug(slug: string) {
+    loading.value = true
+    error.value = null
+
+    try {
+      currentGroup.value = await groupService.getBySlug(slug)
+      return true
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { error?: string } } }
+      error.value = axiosError.response?.data?.error || 'Помилка завантаження групи'
+      console.error('Fetch group error:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function createGroup(data: CreateGroupData) {
     loading.value = true
     error.value = null
@@ -371,6 +388,7 @@ export const useGroupStore = defineStore('group', () => {
     hasGroups,
     fetchGroups,
     fetchGroupById,
+    fetchGroupBySlug,
     createGroup,
     updateGroup,
     deleteGroup,

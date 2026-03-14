@@ -26,7 +26,7 @@ class ExpenseController extends Controller
 
         return response()->json([
             'data' => ExpenseResource::collection($expenses),
-            'total' => $expenses->sum('amount'),
+            'total' => $expenses->sum('converted_amount'),
             'count' => $expenses->count(),
         ]);
     }
@@ -52,7 +52,7 @@ class ExpenseController extends Controller
 
         return response()->json([
             'data' => ExpenseResource::collection($expenses),
-            'total' => $expenses->sum('amount'),
+            'total' => $expenses->sum('converted_amount'),
             'count' => $expenses->count(),
         ]);
     }
